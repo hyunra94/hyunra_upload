@@ -192,6 +192,8 @@
     .share-btn:hover { background: #7aaa72; }
     .open-btn { background: #a0b4e0; }
     .open-btn:hover { background: #7a96cc; }
+    .download-btn { background: #b0a0d8; }
+    .download-btn:hover { background: #9080c0; }
     .delete-btn { background: none; border: 1.5px solid #f5b8b8; border-radius: 7px; color: #c0392b; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; padding: 5px 8px; cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
     .delete-btn:hover { background: #fff0f0; }
 
@@ -415,17 +417,33 @@
     openBtn.addEventListener('click', () => window.open(url, '_blank'));
     btnGroup.appendChild(openBtn);
 
-    btnGroup.appendChild(copyBtn);
+    // 다운로드 버튼
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'download-btn';
+    dlBtn.textContent = '⬇️ 다운로드';
+    dlBtn.addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+    });
+    btnGroup.appendChild(dlBtn);
 
-    if (navigator.share) {
-      const shareBtn = document.createElement('button');
-      shareBtn.className = 'share-btn';
-      shareBtn.textContent = '📤 공유';
-      shareBtn.addEventListener('click', () => {
+    // 공유·복사 버튼 (공유 API 지원 시 공유 시트, 미지원 시 링크복사)
+    const shareBtn = document.createElement('button');
+    shareBtn.className = 'share-btn';
+    shareBtn.textContent = '📤 공유·복사';
+    shareBtn.addEventListener('click', () => {
+      if (navigator.share) {
         navigator.share({ title: name, text: `📁 ${name}`, url }).catch(() => {});
-      });
-      btnGroup.appendChild(shareBtn);
-    }
+      } else {
+        navigator.clipboard.writeText(url).then(() => {
+          shareBtn.textContent = '✅ 복사됨!';
+          setTimeout(() => { shareBtn.textContent = '📤 공유·복사'; }, 2000);
+        });
+      }
+    });
+    btnGroup.appendChild(shareBtn);
 
     row.appendChild(linkEl);
     row.appendChild(btnGroup);
