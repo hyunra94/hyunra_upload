@@ -1,5 +1,5 @@
 {
-  "name": "📁 파일 업로드",
+  "name": "파일 업로드",
   "short_name": "파일업로드",
   "description": "비밀키로 보호되는 개인 파일 업로드 서비스",
   "start_url": "/",
