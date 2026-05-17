@@ -175,12 +175,14 @@
     .fcard-row { display: flex; align-items: center; gap: 6px; }
     .fcard-url-hidden { display: none; }
     .btn-group { display: flex; gap: 6px; flex-shrink: 0; width: 100%; }
-    .copy-btn, .share-btn { border: none; border-radius: 7px; color: #fff; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; padding: 6px 12px; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+    .copy-btn, .share-btn, .open-btn { border: none; border-radius: 7px; color: #fff; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; padding: 7px 8px; cursor: pointer; white-space: nowrap; transition: background 0.2s; flex: 1; text-align: center; }
     .copy-btn { background: var(--pink); }
     .copy-btn:hover { background: var(--pink-deep); }
     .copy-btn.copied { background: var(--green); }
     .share-btn { background: var(--green); }
     .share-btn:hover { background: #7aaa72; }
+    .open-btn { background: #a0b4e0; }
+    .open-btn:hover { background: #7a96cc; }
 
     .list-header { display: flex; align-items: center; justify-content: space-between; }
     .list-header span { font-size: 13px; color: var(--text-sub); }
@@ -337,23 +339,31 @@
     const copyBtn = document.createElement('button');
     copyBtn.className = 'copy-btn';
     copyBtn.style.flex = '1';
-    copyBtn.textContent = '🔗 링크 복사';
+    copyBtn.textContent = '📋 링크복사';
     copyBtn.addEventListener('click', () => {
       navigator.clipboard.writeText(url).then(() => {
         copyBtn.textContent = '✅ 복사됨!';
         copyBtn.classList.add('copied');
-        setTimeout(() => { copyBtn.textContent = '🔗 링크 복사'; copyBtn.classList.remove('copied'); }, 2000);
+        setTimeout(() => { copyBtn.textContent = '📋 링크복사'; copyBtn.classList.remove('copied'); }, 2000);
       });
     });
 
     const btnGroup = document.createElement('div');
     btnGroup.className = 'btn-group';
+
+    // 바로가기 버튼
+    const openBtn = document.createElement('button');
+    openBtn.className = 'open-btn';
+    openBtn.textContent = '🔗 바로가기';
+    openBtn.addEventListener('click', () => window.open(url, '_blank'));
+    btnGroup.appendChild(openBtn);
+
     btnGroup.appendChild(copyBtn);
 
     if (navigator.share) {
       const shareBtn = document.createElement('button');
       shareBtn.className = 'share-btn';
-      shareBtn.textContent = '공유 📤';
+      shareBtn.textContent = '📤 공유';
       shareBtn.addEventListener('click', () => {
         navigator.share({ title: name, text: `📁 ${name}`, url }).catch(() => {});
       });
