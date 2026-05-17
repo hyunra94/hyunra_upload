@@ -3,11 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>파일 업로드</title>
+  <title>📁 파일 업로드</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📁</text></svg>" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#f2a7b8" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="파일업로드" />
   <meta property="og:title" content="파일 업로드" />
   <meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png" />
-  <meta property="og:url" content="https://hyunra94.github.io/upload/" />
+  <meta property="og:url" content="https://hyunraupload.pages.dev/" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
@@ -58,6 +62,19 @@
     }
     .card-header h1 { font-size: 20px; font-weight: 700; color: var(--text); }
     .card-header p { font-size: 12px; color: var(--text-sub); margin-top: 3px; }
+
+    /* 공유로 열림 알림 */
+    .share-notice {
+      display: none;
+      background: #e8f5e5;
+      border-bottom: 1.5px solid var(--green);
+      padding: 10px 32px;
+      font-size: 12px;
+      color: #3a6a3a;
+      align-items: center;
+      gap: 6px;
+    }
+    .share-notice.show { display: flex; }
 
     .key-bar {
       display: flex;
@@ -116,9 +133,7 @@
       position: relative;
     }
     .dropzone:hover, .dropzone.drag-over { background: var(--pink-light); border-color: var(--pink-deep); }
-    .dropzone input[type="file"] {
-      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
-    }
+    .dropzone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
     .dropzone-icon { font-size: 32px; margin-bottom: 8px; }
     .dropzone p { font-size: 14px; font-weight: 500; color: var(--text); }
     .dropzone span { font-size: 12px; color: var(--text-sub); margin-top: 4px; display: block; }
@@ -128,27 +143,15 @@
       display: flex; align-items: center; gap: 8px;
       background: var(--pink-light); border-radius: 9px; padding: 9px 12px; font-size: 13px;
     }
-    .file-item .file-name {
-      flex: 1; color: var(--text); font-weight: 500;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
+    .file-item .file-name { flex: 1; color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .file-item .file-size { color: var(--text-sub); font-size: 12px; flex-shrink: 0; }
-    .file-item .remove-btn {
-      background: none; border: none; cursor: pointer;
-      color: var(--pink-deep); font-size: 15px; padding: 0; flex-shrink: 0; line-height: 1;
-    }
+    .file-item .remove-btn { background: none; border: none; cursor: pointer; color: var(--pink-deep); font-size: 15px; padding: 0; flex-shrink: 0; line-height: 1; }
 
     .progress-wrap { display: none; }
     .progress-wrap.show { display: block; }
-    .progress-label {
-      display: flex; justify-content: space-between;
-      font-size: 12px; color: var(--text-sub); margin-bottom: 6px;
-    }
+    .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-sub); margin-bottom: 6px; }
     .progress-bar-bg { background: var(--border); border-radius: 100px; height: 8px; overflow: hidden; }
-    .progress-bar-fill {
-      background: linear-gradient(90deg, var(--pink), var(--green));
-      height: 100%; border-radius: 100px; width: 0%; transition: width 0.3s ease;
-    }
+    .progress-bar-fill { background: linear-gradient(90deg, var(--pink), var(--green)); height: 100%; border-radius: 100px; width: 0%; transition: width 0.3s ease; }
 
     .upload-btn {
       width: 100%; padding: 12px;
@@ -163,74 +166,30 @@
     .result-box { display: none; flex-direction: column; gap: 8px; }
     .result-box.show { display: flex; }
 
-    .error-box {
-      display: none; background: #fff0f0; border: 1.5px solid #f5b8b8;
-      border-radius: 10px; padding: 11px 14px; font-size: 13px; color: #c0392b;
-    }
+    .error-box { display: none; background: #fff0f0; border: 1.5px solid #f5b8b8; border-radius: 10px; padding: 11px 14px; font-size: 13px; color: #c0392b; }
     .error-box.show { display: block; }
 
-    /* 파일 카드 */
-    .fcard {
-      background: var(--green-light); border: 1.5px solid var(--green);
-      border-radius: 10px; padding: 11px 14px;
-    }
-    .fcard-name {
-      font-size: 12px; color: var(--text-sub); margin-bottom: 5px;
-      display: flex; align-items: center; gap: 5px;
-    }
+    .fcard { background: var(--green-light); border: 1.5px solid var(--green); border-radius: 10px; padding: 11px 14px; }
+    .fcard-name { font-size: 12px; color: var(--text-sub); margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
     .fcard-meta { margin-left: auto; font-size: 11px; color: var(--text-sub); }
-    .fcard-row { display: flex; align-items: center; gap: 8px; }
-    .fcard-link {
-      flex: 1; font-size: 12px; color: var(--text); word-break: break-all;
-      background: #fff; border: 1px solid var(--border); border-radius: 7px;
-      padding: 6px 10px; font-family: monospace;
-    }
-    .copy-btn {
-      background: var(--pink); border: none; border-radius: 7px; color: #fff;
-      font-size: 12px; font-family: 'Noto Sans KR', sans-serif;
-      padding: 6px 12px; cursor: pointer; white-space: nowrap;
-      transition: background 0.2s; flex-shrink: 0;
-    }
+    .fcard-row { display: flex; align-items: center; gap: 6px; }
+    .fcard-link { flex: 1; font-size: 12px; color: var(--text); word-break: break-all; background: #fff; border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; font-family: monospace; min-width: 0; }
+    .btn-group { display: flex; gap: 6px; flex-shrink: 0; }
+    .copy-btn, .share-btn { border: none; border-radius: 7px; color: #fff; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; padding: 6px 12px; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+    .copy-btn { background: var(--pink); }
     .copy-btn:hover { background: var(--pink-deep); }
     .copy-btn.copied { background: var(--green); }
+    .share-btn { background: var(--green); }
+    .share-btn:hover { background: #7aaa72; }
 
-    /* 목록 탭 */
     .list-header { display: flex; align-items: center; justify-content: space-between; }
     .list-header span { font-size: 13px; color: var(--text-sub); }
-    .refresh-btn {
-      background: none; border: 1.5px solid var(--border); border-radius: 8px;
-      padding: 6px 12px; font-size: 12px; font-family: 'Noto Sans KR', sans-serif;
-      color: var(--text-sub); cursor: pointer; transition: all 0.2s;
-    }
+    .refresh-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; color: var(--text-sub); cursor: pointer; transition: all 0.2s; }
     .refresh-btn:hover { border-color: var(--pink); color: var(--pink-deep); }
-
-    .list-loading, .list-empty {
-      text-align: center; padding: 32px; color: var(--text-sub); font-size: 13px;
-    }
+    .list-loading, .list-empty { text-align: center; padding: 32px; color: var(--text-sub); font-size: 13px; }
     .list-items { display: flex; flex-direction: column; gap: 8px; }
-
-    .date-divider {
-      font-size: 11px; font-weight: 700; color: var(--text-sub);
-      letter-spacing: 0.5px; padding: 4px 0 2px;
-      border-bottom: 1px solid var(--border);
-    }
-
+    .date-divider { font-size: 11px; font-weight: 700; color: var(--text-sub); letter-spacing: 0.5px; padding: 4px 0 2px; border-bottom: 1px solid var(--border); }
     .expire-note { text-align: center; font-size: 11px; color: var(--text-sub); }
-
-    .demo-badge {
-      display: none;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      background: #fff8e1;
-      border: 1.5px solid #ffe082;
-      border-radius: 8px;
-      padding: 8px 14px;
-      font-size: 12px;
-      color: #8a6a00;
-      font-weight: 500;
-    }
-    .demo-badge.show { display: flex; }
   </style>
 </head>
 <body>
@@ -240,6 +199,11 @@
   <div class="card-header">
     <h1>📁 파일 업로드</h1>
     <p>비밀키 입력 후 파일을 올리거나 목록을 확인하세요 · 7일 후 자동 삭제</p>
+  </div>
+
+  <!-- 공유로 열림 알림 -->
+  <div class="share-notice" id="shareNotice">
+    📤 갤러리에서 공유된 파일이 자동으로 추가됐어요!
   </div>
 
   <div class="key-bar">
@@ -252,7 +216,6 @@
     <button class="tab-btn" data-tab="list">📋 내 파일 목록</button>
   </div>
 
-  <!-- 업로드 탭 -->
   <div class="tab-panel active" id="tab-upload">
     <div class="dropzone" id="dropzone">
       <input type="file" id="fileInput" multiple />
@@ -270,14 +233,12 @@
         <div class="progress-bar-fill" id="progressFill"></div>
       </div>
     </div>
-    <div class="demo-badge" id="demoBadge">🧪 데모 모드 — 실제 업로드 없이 시뮬레이션만 실행됩니다</div>
     <div class="error-box" id="errorBox"></div>
     <div class="result-box" id="resultBox"></div>
     <button class="upload-btn" id="uploadBtn" disabled>업로드</button>
     <p class="expire-note">🗓 업로드된 파일은 7일 후 자동으로 삭제됩니다</p>
   </div>
 
-  <!-- 목록 탭 -->
   <div class="tab-panel" id="tab-list">
     <div class="list-header">
       <span id="listCount">R2에 저장된 파일 목록</span>
@@ -294,16 +255,44 @@
 
 <script>
   const WORKER_URL = 'https://file-upload.hyunra94.workers.dev';
-  const DEMO_KEY = 'test'; // 이 키 입력 시 데모 모드
 
   const secretKeyInput = document.getElementById('secretKey');
-  const demoBadge = document.getElementById('demoBadge');
   const getSecret = () => secretKeyInput.value.trim();
-  const isDemo = () => getSecret() === DEMO_KEY;
 
-  secretKeyInput.addEventListener('input', () => {
-    demoBadge.classList.toggle('show', isDemo());
-  });
+  // ── 서비스워커 등록
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(console.error);
+  }
+
+  // ── 공유로 열린 경우 파일 복원
+  async function loadSharedFiles() {
+    const params = new URLSearchParams(location.search);
+    if (!params.has('shared')) return;
+
+    // URL 파라미터 제거
+    history.replaceState({}, '', '/');
+
+    try {
+      const cache = await caches.open('share-target-v1');
+      const res = await cache.match('/shared-files');
+      if (!res) return;
+
+      const fileDataList = await res.json();
+      await cache.delete('/shared-files');
+
+      const files = fileDataList.map(f => {
+        const uint8 = new Uint8Array(f.data);
+        const blob = new Blob([uint8], { type: f.type });
+        return new File([blob], f.name, { type: f.type });
+      });
+
+      addFiles(files);
+      document.getElementById('shareNotice').classList.add('show');
+      setTimeout(() => document.getElementById('shareNotice').classList.remove('show'), 4000);
+    } catch (e) {
+      console.error('공유 파일 복원 실패:', e);
+    }
+  }
 
   // ── 탭 전환
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -325,20 +314,6 @@
     return (bytes / 1024 / 1024 / 1024).toFixed(2) + 'GB';
   }
 
-  function makeCopyBtn(url) {
-    const btn = document.createElement('button');
-    btn.className = 'copy-btn';
-    btn.textContent = '복사';
-    btn.addEventListener('click', () => {
-      navigator.clipboard.writeText(url).then(() => {
-        btn.textContent = '✅ 복사됨';
-        btn.classList.add('copied');
-        setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000);
-      });
-    });
-    return btn;
-  }
-
   function makeFcard({ name, url, size }) {
     const card = document.createElement('div');
     card.className = 'fcard';
@@ -356,8 +331,34 @@
     const linkEl = document.createElement('div');
     linkEl.className = 'fcard-link';
     linkEl.textContent = url;
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'copy-btn';
+    copyBtn.textContent = '복사';
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(url).then(() => {
+        copyBtn.textContent = '✅ 복사됨';
+        copyBtn.classList.add('copied');
+        setTimeout(() => { copyBtn.textContent = '복사'; copyBtn.classList.remove('copied'); }, 2000);
+      });
+    });
+
+    const btnGroup = document.createElement('div');
+    btnGroup.className = 'btn-group';
+    btnGroup.appendChild(copyBtn);
+
+    if (navigator.share) {
+      const shareBtn = document.createElement('button');
+      shareBtn.className = 'share-btn';
+      shareBtn.textContent = '공유 📤';
+      shareBtn.addEventListener('click', () => {
+        navigator.share({ title: name, text: `📁 ${name}`, url }).catch(() => {});
+      });
+      btnGroup.appendChild(shareBtn);
+    }
+
     row.appendChild(linkEl);
-    row.appendChild(makeCopyBtn(url));
+    row.appendChild(btnGroup);
     card.appendChild(nameRow);
     card.appendChild(row);
     return card;
@@ -417,35 +418,6 @@
     uploadBtn.disabled = true;
 
     const results = [];
-
-    // ── 데모 모드
-    if (isDemo()) {
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i];
-        progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${file.name} 업로드 중...`;
-        setProgress(0);
-        await new Promise(r => setTimeout(r, 300));
-        for (let p = 10; p <= 100; p += 10) {
-          setProgress(p);
-          await new Promise(r => setTimeout(r, 120));
-        }
-        results.push({
-          name: file.name,
-          url: `https://example.r2.dev/uploads/2026-05-17/${encodeURIComponent(file.name)}`,
-          size: file.size,
-        });
-      }
-      progressText.textContent = '✅ 모든 파일 업로드 완료! (데모)';
-      setProgress(100);
-      results.forEach(r => resultBox.appendChild(makeFcard(r)));
-      resultBox.classList.add('show');
-      selectedFiles = [];
-      renderFileList();
-      setTimeout(() => progressWrap.classList.remove('show'), 1500);
-      return;
-    }
-
-    // ── 실제 업로드
 
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
@@ -512,9 +484,7 @@
     listCount.textContent = '불러오는 중...';
 
     try {
-      const res = await fetch(`${WORKER_URL}/upload-list`, {
-        headers: { 'X-Secret-Key': secret }
-      });
+      const res = await fetch(`${WORKER_URL}/upload-list`, { headers: { 'X-Secret-Key': secret } });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: '오류가 발생했습니다.' }));
         throw new Error(err.error || '목록 불러오기 실패');
@@ -529,26 +499,22 @@
 
       listCount.textContent = `총 ${files.length}개 파일`;
 
-      // 날짜별 그룹핑 (key: uploads/YYYY-MM-DD/파일명)
       const grouped = {};
       files.forEach(f => {
-        const parts = f.key.split('/');
-        const date = parts[1] || '날짜 없음';
+        const date = f.key.split('/')[1] || '날짜 없음';
         if (!grouped[date]) grouped[date] = [];
         grouped[date].push(f);
       });
 
       const container = document.createElement('div');
       container.className = 'list-items';
-
       Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(date => {
         const divider = document.createElement('div');
         divider.className = 'date-divider';
         divider.textContent = date;
         container.appendChild(divider);
         grouped[date].forEach(f => {
-          const filename = decodeURIComponent(f.key.split('/').pop());
-          container.appendChild(makeFcard({ name: filename, url: f.url, size: f.size }));
+          container.appendChild(makeFcard({ name: decodeURIComponent(f.key.split('/').pop()), url: f.url, size: f.size }));
         });
       });
 
@@ -560,6 +526,9 @@
       listContent.innerHTML = '';
     }
   }
+
+  // 페이지 로드 시 공유 파일 확인
+  loadSharedFiles();
 </script>
 
 </body>
