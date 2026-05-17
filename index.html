@@ -170,17 +170,32 @@
     .error-box.show { display: block; }
 
     .fcard { background: var(--green-light); border: 1.5px solid var(--green); border-radius: 10px; padding: 11px 14px; }
-    .fcard-name { font-size: 12px; color: var(--text-sub); margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+    .fcard-name {
+      font-size: 12px; color: var(--text-sub); margin-bottom: 5px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .fcard-name span:first-child {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .fcard-meta { margin-left: auto; font-size: 11px; color: var(--text-sub); }
     .fcard-row { display: flex; align-items: center; gap: 6px; }
-    .fcard-link { flex: 1; font-size: 12px; color: var(--text); word-break: break-all; background: #fff; border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; font-family: monospace; min-width: 0; }
-    .btn-group { display: flex; gap: 6px; flex-shrink: 0; }
-    .copy-btn, .share-btn { border: none; border-radius: 7px; color: #fff; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; padding: 6px 12px; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+    .fcard-url-hidden { display: none; }
+    .btn-group { display: flex; gap: 6px; flex-shrink: 0; width: 100%; }
+    .copy-btn, .share-btn, .open-btn { border: none; border-radius: 7px; color: #fff; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; padding: 7px 8px; cursor: pointer; white-space: nowrap; transition: background 0.2s; flex: 1; text-align: center; }
     .copy-btn { background: var(--pink); }
     .copy-btn:hover { background: var(--pink-deep); }
     .copy-btn.copied { background: var(--green); }
     .share-btn { background: var(--green); }
     .share-btn:hover { background: #7aaa72; }
+    .open-btn { background: #a0b4e0; }
+    .open-btn:hover { background: #7a96cc; }
+    .download-btn { background: #f2a7b8; }
+    .download-btn:hover { background: #e07f96; }
+    .delete-btn { background: none; border: 1.5px solid #f5b8b8; border-radius: 7px; color: #c0392b; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; padding: 5px 8px; cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+    .delete-btn:hover { background: #fff0f0; }
 
     .list-header { display: flex; align-items: center; justify-content: space-between; }
     .list-header span { font-size: 13px; color: var(--text-sub); }
@@ -190,6 +205,34 @@
     .list-items { display: flex; flex-direction: column; gap: 8px; }
     .date-divider { font-size: 11px; font-weight: 700; color: var(--text-sub); letter-spacing: 0.5px; padding: 4px 0 2px; border-bottom: 1px solid var(--border); }
     .expire-note { text-align: center; font-size: 11px; color: var(--text-sub); }
+
+    /* 단축 링크 */
+    .shortlink-wrap {
+      background: var(--pink-light);
+      border: 1.5px solid var(--pink);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .shortlink-label { font-size: 12px; color: var(--text-sub); white-space: nowrap; }
+    .shortlink-url {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--pink-deep);
+      filter: blur(5px);
+      cursor: pointer;
+      user-select: none;
+      transition: filter 0.3s;
+      text-decoration: none;
+    }
+    .shortlink-url.revealed {
+      filter: none;
+      cursor: pointer;
+    }
+    .shortlink-hint { font-size: 11px; color: var(--text-sub); white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -199,6 +242,10 @@
   <div class="card-header">
     <h1>📁 파일 업로드</h1>
     <p>비밀키 입력 후 파일을 올리거나 목록을 확인하세요 · 7일 후 자동 삭제</p>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px;">
+      <span class="shortlink-url" id="shortlink" onclick="revealLink()" style="font-size:12px;">https://bit.ly/gusfkdid</span>
+      <span class="shortlink-hint" id="shortlinkHint" style="font-size:11px; color:var(--text-sub);">탭하면 공개</span>
+    </div>
   </div>
 
   <!-- 공유로 열림 알림 -->
@@ -258,6 +305,20 @@
 
   const secretKeyInput = document.getElementById('secretKey');
   const getSecret = () => secretKeyInput.value.trim();
+
+  // ── 비밀키 저장/불러오기
+  const SAVED_KEY = 'upload_secret';
+  const saved = localStorage.getItem(SAVED_KEY);
+  if (saved) secretKeyInput.value = saved;
+  secretKeyInput.addEventListener('change', () => {
+    if (secretKeyInput.value.trim()) localStorage.setItem(SAVED_KEY, secretKeyInput.value.trim());
+  });
+
+  // ── 단축 링크 모자이크 해제
+  function revealLink() {
+    document.getElementById('shortlink').classList.add('revealed');
+    document.getElementById('shortlinkHint').style.display = 'none';
+  }
 
   // ── 서비스워커 등록
   if ('serviceWorker' in navigator) {
@@ -328,34 +389,61 @@
     }
     const row = document.createElement('div');
     row.className = 'fcard-row';
+
+    // URL은 숨기고 버튼만 표시
     const linkEl = document.createElement('div');
-    linkEl.className = 'fcard-link';
+    linkEl.className = 'fcard-url-hidden';
     linkEl.textContent = url;
 
     const copyBtn = document.createElement('button');
     copyBtn.className = 'copy-btn';
-    copyBtn.textContent = '복사';
+    copyBtn.style.flex = '1';
+    copyBtn.textContent = '📋 링크복사';
     copyBtn.addEventListener('click', () => {
       navigator.clipboard.writeText(url).then(() => {
-        copyBtn.textContent = '✅ 복사됨';
+        copyBtn.textContent = '✅ 복사됨!';
         copyBtn.classList.add('copied');
-        setTimeout(() => { copyBtn.textContent = '복사'; copyBtn.classList.remove('copied'); }, 2000);
+        setTimeout(() => { copyBtn.textContent = '📋 링크복사'; copyBtn.classList.remove('copied'); }, 2000);
       });
     });
 
     const btnGroup = document.createElement('div');
     btnGroup.className = 'btn-group';
-    btnGroup.appendChild(copyBtn);
 
-    if (navigator.share) {
-      const shareBtn = document.createElement('button');
-      shareBtn.className = 'share-btn';
-      shareBtn.textContent = '공유 📤';
-      shareBtn.addEventListener('click', () => {
+    // 바로가기 버튼
+    const openBtn = document.createElement('button');
+    openBtn.className = 'open-btn';
+    openBtn.textContent = '🔗 바로가기';
+    openBtn.addEventListener('click', () => window.open(url, '_blank'));
+    btnGroup.appendChild(openBtn);
+
+    // 다운로드 버튼
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'download-btn';
+    dlBtn.textContent = '⬇️ 다운로드';
+    dlBtn.addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+    });
+    btnGroup.appendChild(dlBtn);
+
+    // 공유·복사 버튼 (공유 API 지원 시 공유 시트, 미지원 시 링크복사)
+    const shareBtn = document.createElement('button');
+    shareBtn.className = 'share-btn';
+    shareBtn.textContent = '📤 공유·복사';
+    shareBtn.addEventListener('click', () => {
+      if (navigator.share) {
         navigator.share({ title: name, text: `📁 ${name}`, url }).catch(() => {});
-      });
-      btnGroup.appendChild(shareBtn);
-    }
+      } else {
+        navigator.clipboard.writeText(url).then(() => {
+          shareBtn.textContent = '✅ 복사됨!';
+          setTimeout(() => { shareBtn.textContent = '📤 공유·복사'; }, 2000);
+        });
+      }
+    });
+    btnGroup.appendChild(shareBtn);
 
     row.appendChild(linkEl);
     row.appendChild(btnGroup);
@@ -424,17 +512,11 @@
       progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${file.name} 업로드 중...`;
       setProgress(0);
       try {
-        const signRes = await fetch(`${WORKER_URL}/upload-sign`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Secret-Key': secret },
-          body: JSON.stringify({ filename: file.name, contentType: file.type || 'application/octet-stream', size: file.size }),
-        });
-        if (!signRes.ok) {
-          const err = await signRes.json().catch(() => ({ error: '비밀키가 올바르지 않거나 서버 오류입니다.' }));
-          throw new Error(err.error || '서명 실패');
-        }
-        const { uploadUrl, downloadUrl } = await signRes.json();
-        await uploadWithProgress(file, uploadUrl, pct => setProgress(pct));
+        const formData = new FormData();
+        formData.append('file', file);
+
+        await uploadWithProgress(file, formData, secret, pct => setProgress(pct));
+        const downloadUrl = lastDownloadUrl;
         results.push({ name: file.name, url: downloadUrl, size: file.size });
         setProgress(100);
       } catch (e) {
@@ -454,15 +536,26 @@
     setTimeout(() => progressWrap.classList.remove('show'), 1500);
   });
 
-  function uploadWithProgress(file, url, onProgress) {
+  let lastDownloadUrl = '';
+
+  function uploadWithProgress(file, formData, secret, onProgress) {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('PUT', url);
-      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.open('POST', `${WORKER_URL}/upload-file`);
+      xhr.setRequestHeader('X-Secret-Key', secret);
       xhr.upload.addEventListener('progress', e => { if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100)); });
-      xhr.addEventListener('load', () => { if (xhr.status >= 200 && xhr.status < 300) resolve(); else reject(new Error('HTTP ' + xhr.status)); });
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const res = JSON.parse(xhr.responseText);
+          lastDownloadUrl = res.downloadUrl;
+          resolve();
+        } else {
+          const err = JSON.parse(xhr.responseText || '{}');
+          reject(new Error(err.error || 'HTTP ' + xhr.status));
+        }
+      });
       xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
-      xhr.send(file);
+      xhr.send(formData);
     });
   }
 
@@ -514,7 +607,33 @@
         divider.textContent = date;
         container.appendChild(divider);
         grouped[date].forEach(f => {
-          container.appendChild(makeFcard({ name: decodeURIComponent(f.key.split('/').pop()), url: f.url, size: f.size }));
+          const filename = decodeURIComponent(f.key.split('/').pop());
+          const card = makeFcard({ name: filename, url: f.url, size: f.size });
+
+          // 삭제 버튼 추가 (목록 탭에서만)
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'delete-btn';
+          deleteBtn.textContent = '🗑 삭제';
+          deleteBtn.addEventListener('click', async () => {
+            if (!confirm(`"${filename}" 파일을 삭제할까요?`)) return;
+            deleteBtn.textContent = '삭제 중...';
+            deleteBtn.disabled = true;
+            try {
+              const res = await fetch(`${WORKER_URL}/upload-delete`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'X-Secret-Key': getSecret() },
+                body: JSON.stringify({ key: f.key }),
+              });
+              if (!res.ok) throw new Error('삭제 실패');
+              card.remove();
+            } catch (e) {
+              alert('삭제 실패: ' + e.message);
+              deleteBtn.textContent = '🗑 삭제';
+              deleteBtn.disabled = false;
+            }
+          });
+          card.querySelector('.fcard-name').appendChild(deleteBtn);
+          container.appendChild(card);
         });
       });
 
