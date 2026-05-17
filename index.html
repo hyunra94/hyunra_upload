@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>파일 업로드</title>
+  <title>📁 파일 업로드</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📁</text></svg>" />
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#f2a7b8" />
@@ -173,8 +173,8 @@
     .fcard-name { font-size: 12px; color: var(--text-sub); margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
     .fcard-meta { margin-left: auto; font-size: 11px; color: var(--text-sub); }
     .fcard-row { display: flex; align-items: center; gap: 6px; }
-    .fcard-link { flex: 1; font-size: 12px; color: var(--text); word-break: break-all; background: #fff; border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; font-family: monospace; min-width: 0; }
-    .btn-group { display: flex; gap: 6px; flex-shrink: 0; }
+    .fcard-url-hidden { display: none; }
+    .btn-group { display: flex; gap: 6px; flex-shrink: 0; width: 100%; }
     .copy-btn, .share-btn { border: none; border-radius: 7px; color: #fff; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; padding: 6px 12px; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
     .copy-btn { background: var(--pink); }
     .copy-btn:hover { background: var(--pink-deep); }
@@ -328,18 +328,21 @@
     }
     const row = document.createElement('div');
     row.className = 'fcard-row';
+
+    // URL은 숨기고 버튼만 표시
     const linkEl = document.createElement('div');
-    linkEl.className = 'fcard-link';
+    linkEl.className = 'fcard-url-hidden';
     linkEl.textContent = url;
 
     const copyBtn = document.createElement('button');
     copyBtn.className = 'copy-btn';
-    copyBtn.textContent = '복사';
+    copyBtn.style.flex = '1';
+    copyBtn.textContent = '🔗 링크 복사';
     copyBtn.addEventListener('click', () => {
       navigator.clipboard.writeText(url).then(() => {
-        copyBtn.textContent = '✅ 복사됨';
+        copyBtn.textContent = '✅ 복사됨!';
         copyBtn.classList.add('copied');
-        setTimeout(() => { copyBtn.textContent = '복사'; copyBtn.classList.remove('copied'); }, 2000);
+        setTimeout(() => { copyBtn.textContent = '🔗 링크 복사'; copyBtn.classList.remove('copied'); }, 2000);
       });
     });
 
