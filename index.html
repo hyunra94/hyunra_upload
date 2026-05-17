@@ -170,7 +170,16 @@
     .error-box.show { display: block; }
 
     .fcard { background: var(--green-light); border: 1.5px solid var(--green); border-radius: 10px; padding: 11px 14px; }
-    .fcard-name { font-size: 12px; color: var(--text-sub); margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+    .fcard-name {
+      font-size: 12px; color: var(--text-sub); margin-bottom: 5px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .fcard-name span:first-child {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .fcard-meta { margin-left: auto; font-size: 11px; color: var(--text-sub); }
     .fcard-row { display: flex; align-items: center; gap: 6px; }
     .fcard-url-hidden { display: none; }
@@ -232,7 +241,7 @@
     <h1>📁 파일 업로드</h1>
     <p>비밀키 입력 후 파일을 올리거나 목록을 확인하세요 · 7일 후 자동 삭제</p>
     <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px;">
-      <a class="shortlink-url" id="shortlink" href="https://bit.ly/gusfkdid" target="_blank" onclick="revealLink(event)" style="font-size:12px;">https://bit.ly/gusfkdid</a>
+      <span class="shortlink-url" id="shortlink" onclick="revealLink()" style="font-size:12px;">https://bit.ly/gusfkdid</span>
       <span class="shortlink-hint" id="shortlinkHint" style="font-size:11px; color:var(--text-sub);">탭하면 공개</span>
     </div>
   </div>
@@ -304,14 +313,9 @@
   });
 
   // ── 단축 링크 모자이크 해제
-  function revealLink(e) {
-    const el = document.getElementById('shortlink');
-    const hint = document.getElementById('shortlinkHint');
-    if (!el.classList.contains('revealed')) {
-      e.preventDefault();
-      el.classList.add('revealed');
-      hint.textContent = '클릭하면 이동';
-    }
+  function revealLink() {
+    document.getElementById('shortlink').classList.add('revealed');
+    document.getElementById('shortlinkHint').style.display = 'none';
   }
 
   // ── 서비스워커 등록
