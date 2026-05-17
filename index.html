@@ -375,7 +375,7 @@
     return (bytes / 1024 / 1024 / 1024).toFixed(2) + 'GB';
   }
 
-  function makeFcard({ name, url, size }) {
+  function makeFcard({ name, url, size, key }) {
     const card = document.createElement('div');
     card.className = 'fcard';
     const nameRow = document.createElement('div');
@@ -421,11 +421,25 @@
     const dlBtn = document.createElement('button');
     dlBtn.className = 'copy-btn';
     dlBtn.textContent = '⬇️ 다운로드';
-    dlBtn.addEventListener('click', () => {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      a.click();
+    dlBtn.addEventListener('click', async () => {
+      dlBtn.textContent = '⏳ 준비 중...';
+      try {
+        const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
+          headers: { 'X-Secret-Key': getSecret() }
+        });
+        if (!res.ok) throw new Error('다운로드 실패');
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      } catch(e) {
+        alert('다운로드 실패: ' + e.message);
+      }
+      dlBtn.textContent = '⬇️ 다운로드';
     });
     btnGroup.appendChild(dlBtn);
 
@@ -517,7 +531,7 @@
 
         await uploadWithProgress(file, formData, secret, pct => setProgress(pct));
         const downloadUrl = lastDownloadUrl;
-        results.push({ name: file.name, url: downloadUrl, size: file.size });
+        results.push({ name: file.name, url: downloadUrl, size: file.size, key: `uploads/${new Date().toISOString().slice(0,10)}/${encodeURIComponent(file.name)}` });
         setProgress(100);
       } catch (e) {
         showError(`${file.name}: ${e.message}`);
@@ -608,7 +622,7 @@
         container.appendChild(divider);
         grouped[date].forEach(f => {
           const filename = decodeURIComponent(f.key.split('/').pop());
-          const card = makeFcard({ name: filename, url: f.url, size: f.size });
+          const card = makeFcard({ name: filename, url: f.url, size: f.size, key: f.key });
 
           // 삭제 버튼 추가 (목록 탭에서만)
           const deleteBtn = document.createElement('button');
