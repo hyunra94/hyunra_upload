@@ -183,6 +183,8 @@
     .share-btn:hover { background: #7aaa72; }
     .open-btn { background: #a0b4e0; }
     .open-btn:hover { background: #7a96cc; }
+    .delete-btn { background: none; border: 1.5px solid #f5b8b8; border-radius: 7px; color: #c0392b; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; padding: 5px 8px; cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+    .delete-btn:hover { background: #fff0f0; }
 
     .list-header { display: flex; align-items: center; justify-content: space-between; }
     .list-header span { font-size: 13px; color: var(--text-sub); }
@@ -260,6 +262,14 @@
 
   const secretKeyInput = document.getElementById('secretKey');
   const getSecret = () => secretKeyInput.value.trim();
+
+  // ── 비밀키 저장/불러오기
+  const SAVED_KEY = 'upload_secret';
+  const saved = localStorage.getItem(SAVED_KEY);
+  if (saved) secretKeyInput.value = saved;
+  secretKeyInput.addEventListener('change', () => {
+    if (secretKeyInput.value.trim()) localStorage.setItem(SAVED_KEY, secretKeyInput.value.trim());
+  });
 
   // ── 서비스워커 등록
   if ('serviceWorker' in navigator) {
@@ -532,7 +542,33 @@
         divider.textContent = date;
         container.appendChild(divider);
         grouped[date].forEach(f => {
-          container.appendChild(makeFcard({ name: decodeURIComponent(f.key.split('/').pop()), url: f.url, size: f.size }));
+          const filename = decodeURIComponent(f.key.split('/').pop());
+          const card = makeFcard({ name: filename, url: f.url, size: f.size });
+
+          // 삭제 버튼 추가 (목록 탭에서만)
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'delete-btn';
+          deleteBtn.textContent = '🗑 삭제';
+          deleteBtn.addEventListener('click', async () => {
+            if (!confirm(`"${filename}" 파일을 삭제할까요?`)) return;
+            deleteBtn.textContent = '삭제 중...';
+            deleteBtn.disabled = true;
+            try {
+              const res = await fetch(`${WORKER_URL}/upload-delete`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'X-Secret-Key': getSecret() },
+                body: JSON.stringify({ key: f.key }),
+              });
+              if (!res.ok) throw new Error('삭제 실패');
+              card.remove();
+            } catch (e) {
+              alert('삭제 실패: ' + e.message);
+              deleteBtn.textContent = '🗑 삭제';
+              deleteBtn.disabled = false;
+            }
+          });
+          card.querySelector('.fcard-name').appendChild(deleteBtn);
+          container.appendChild(card);
         });
       });
 
