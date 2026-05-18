@@ -4,7 +4,7 @@ const CACHE_NAME = 'share-target-v1';
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  if (url.pathname === '/share-target' && event.request.method === 'POST') {
+  if (url.pathname.endsWith('/share-target') && event.request.method === 'POST') {
     event.respondWith(handleShareTarget(event.request));
     return;
   }
@@ -42,5 +42,5 @@ async function handleShareTarget(request) {
   }
 
   // 메인 페이지로 리다이렉트
-  return Response.redirect('/?shared=true', 303);
+  return Response.redirect(new URL('./?shared=true', self.registration.scope).href, 303);
 }

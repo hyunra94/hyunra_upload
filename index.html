@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>파일 업로드</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📁</text></svg>" />
-  <link rel="manifest" href="/manifest.json" />
+  <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#f2a7b8" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="파일업로드" />
@@ -454,7 +454,7 @@
 
   // ── 서비스워커 등록
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(console.error);
+    navigator.serviceWorker.register('./sw.js').catch(console.error);
   }
 
   // ── 공유로 열린 경우 파일 복원
@@ -463,7 +463,7 @@
     if (!params.has('shared')) return;
 
     // URL 파라미터 제거
-    history.replaceState({}, '', '/');
+    history.replaceState({}, '', location.pathname);
 
     try {
       const cache = await caches.open('share-target-v1');
@@ -510,104 +510,134 @@
   function makeFcard({ name, url, size, key }) {
     const card = document.createElement('div');
     card.className = 'fcard';
+
+    const safeName = name || '이름 없음';
+    const fileKey = key || '';
+    const isTextFile = safeName.toLowerCase().endsWith('.txt');
+
     const nameRow = document.createElement('div');
     nameRow.className = 'fcard-name';
-    nameRow.innerHTML = `<span>📄 ${name}</span>`;
+    nameRow.innerHTML = `<span>📄 ${safeName}</span>`;
+
     if (size) {
       const meta = document.createElement('span');
       meta.className = 'fcard-meta';
       meta.textContent = formatSize(size);
       nameRow.appendChild(meta);
     }
+
     const row = document.createElement('div');
     row.className = 'fcard-row';
 
-    // URL은 숨기고 버튼만 표시
+    // URL은 화면에 직접 노출하지 않고 버튼으로만 처리
     const linkEl = document.createElement('div');
     linkEl.className = 'fcard-url-hidden';
-    linkEl.textContent = url;
-
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'copy-btn';
-    copyBtn.style.flex = '1';
-    copyBtn.textContent = '📋 링크복사';
-    copyBtn.addEventListener('click', () => {
-      navigator.clipboard.writeText(url).then(() => {
-        copyBtn.textContent = '✅ 복사됨!';
-        copyBtn.classList.add('copied');
-        setTimeout(() => { copyBtn.textContent = '📋 링크복사'; copyBtn.classList.remove('copied'); }, 2000);
-      });
-    });
+    linkEl.textContent = url || '';
 
     const btnGroup = document.createElement('div');
     btnGroup.className = 'btn-group';
+
+    const fetchTextContent = async () => {
+      if (!fileKey) throw new Error('파일 키가 없어 내용을 불러올 수 없습니다.');
+      const secret = getSecret();
+      if (!secret) throw new Error('비밀키를 입력해주세요.');
+
+      const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(fileKey)}`, {
+        headers: { 'X-Secret-Key': secret }
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: '내용 불러오기 실패' }));
+        throw new Error(err.error || '내용 불러오기 실패');
+      }
+
+      const text = await res.text();
+      return text.replace(/^\uFEFF/, '');
+    };
 
     // 바로가기 버튼
     const openBtn = document.createElement('button');
     openBtn.className = 'open-btn';
     openBtn.textContent = '🔗 바로가기';
 
-    // txt 파일 내용 펼치기 영역
-    let textPreview = null;
+    let previewWrap = null;
+    let previewText = null;
+    let previewCopyBtn = null;
+    let loadedText = '';
     let isExpanded = false;
 
+    function createPreview() {
+      if (previewWrap) return;
+
+      previewWrap = document.createElement('div');
+      previewWrap.style.cssText = `
+        position:relative; margin-top:8px; display:none;
+      `;
+
+      previewText = document.createElement('div');
+      previewText.style.cssText = `
+        background:#fff; border:1.5px solid var(--border);
+        border-radius:10px; padding:38px 12px 12px; font-size:12px;
+        color:var(--text); white-space:pre-wrap; word-break:break-word;
+        line-height:1.7; max-height:220px; overflow-y:auto;
+      `;
+      previewText.textContent = '⏳ 불러오는 중...';
+
+      previewCopyBtn = document.createElement('button');
+      previewCopyBtn.style.cssText = `
+        position:absolute; top:8px; right:8px;
+        background:var(--pink); border:none; border-radius:6px;
+        color:#fff; font-size:11px; font-family:'Noto Sans KR',sans-serif;
+        padding:4px 8px; cursor:pointer;
+      `;
+      previewCopyBtn.textContent = '복사';
+      previewCopyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(loadedText || previewText.textContent || '');
+          previewCopyBtn.textContent = '✅ 복사됨';
+          setTimeout(() => { previewCopyBtn.textContent = '복사'; }, 1600);
+        } catch (e) {
+          alert('복사 실패: ' + e.message);
+        }
+      });
+
+      previewWrap.appendChild(previewText);
+      previewWrap.appendChild(previewCopyBtn);
+      card.appendChild(previewWrap);
+    }
+
     openBtn.addEventListener('click', async () => {
-      if (!name.endsWith('.txt')) {
-        window.open(url, '_blank');
+      // 텍스트가 아니면 기존처럼 새 창으로 바로 열기
+      if (!isTextFile) {
+        if (!url) {
+          alert('열 수 있는 링크가 없습니다.');
+          return;
+        }
+        window.open(url, '_blank', 'noopener');
         return;
       }
-      // txt 파일이면 내용 토글
-      if (!textPreview) {
-        textPreview = document.createElement('div');
-        textPreview.style.cssText = `
-          background:#fff; border:1.5px solid var(--border);
-          border-radius:10px; padding:12px; font-size:12px;
-          color:var(--text); white-space:pre-wrap; word-break:break-all;
-          line-height:1.7; max-height:200px; overflow-y:auto;
-          margin-top:8px; display:none;
-        `;
-        textPreview.textContent = '⏳ 불러오는 중...';
-        card.appendChild(textPreview);
-      }
+
+      // 텍스트 파일이면 카드 아래 토글 형태로 내용 표시 + 복사 버튼
+      createPreview();
       isExpanded = !isExpanded;
-      textPreview.style.display = isExpanded ? 'block' : 'none';
+      previewWrap.style.display = isExpanded ? 'block' : 'none';
       openBtn.textContent = isExpanded ? '🔼 접기' : '🔗 바로가기';
 
-      if (isExpanded && textPreview.textContent === '⏳ 불러오는 중...') {
-        try {
-          const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
-            headers: { 'X-Secret-Key': getSecret() }
-          });
-          const text = await res.text();
-          textPreview.textContent = text;
+      if (!isExpanded || loadedText) return;
 
-          // 복사 버튼 추가
-          const previewWrap = document.createElement('div');
-          previewWrap.style.cssText = 'position:relative; margin-top:8px;';
-          const copyPreviewBtn = document.createElement('button');
-          copyPreviewBtn.style.cssText = `
-            position:absolute; top:8px; right:8px;
-            background:var(--pink); border:none; border-radius:6px;
-            color:#fff; font-size:11px; font-family:'Noto Sans KR',sans-serif;
-            padding:4px 8px; cursor:pointer;
-          `;
-          copyPreviewBtn.textContent = '복사';
-          copyPreviewBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(text).then(() => {
-              copyPreviewBtn.textContent = '✅';
-              setTimeout(() => { copyPreviewBtn.textContent = '복사'; }, 2000);
-            });
-          });
-          textPreview.style.margin = '0';
-          previewWrap.appendChild(textPreview);
-          previewWrap.appendChild(copyPreviewBtn);
-          card.appendChild(previewWrap);
-        } catch(e) {
-          textPreview.textContent = '불러오기 실패: ' + e.message;
-          card.appendChild(textPreview);
-        }
+      previewText.textContent = '⏳ 불러오는 중...';
+      previewCopyBtn.disabled = true;
+
+      try {
+        loadedText = await fetchTextContent();
+        previewText.textContent = loadedText || '(내용 없음)';
+      } catch (e) {
+        previewText.textContent = '⚠️ ' + e.message;
+      } finally {
+        previewCopyBtn.disabled = false;
       }
     });
+
     btnGroup.appendChild(openBtn);
 
     // 다운로드 버튼
@@ -617,14 +647,21 @@
     dlBtn.addEventListener('click', async () => {
       dlBtn.textContent = '⏳ 준비 중...';
       try {
-        const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
+        if (!fileKey) throw new Error('파일 키가 없습니다.');
+
+        const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(fileKey)}`, {
           headers: { 'X-Secret-Key': getSecret() }
         });
-        if (!res.ok) throw new Error('다운로드 실패');
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: '다운로드 실패' }));
+          throw new Error(err.error || '다운로드 실패');
+        }
+
         const blob = await res.blob();
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = name;
+        a.download = safeName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -636,46 +673,40 @@
     });
     btnGroup.appendChild(dlBtn);
 
-    // 공유·복사 버튼 (공유 API 지원 시 공유 시트, 미지원 시 링크복사)
+    // 공유·복사 버튼
     const shareBtn = document.createElement('button');
     shareBtn.className = 'share-btn';
     shareBtn.textContent = '📤 공유·복사';
     shareBtn.addEventListener('click', async () => {
-      const isTxt = name.endsWith('.txt');
+      try {
+        if (isTextFile) {
+          shareBtn.textContent = '⏳ 불러오는 중...';
+          const text = loadedText || await fetchTextContent();
+          loadedText = text;
 
-      // txt 파일이면 내용 가져오기
-      if (isTxt) {
-        shareBtn.textContent = '⏳ 불러오는 중...';
-        try {
-          const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
-            headers: { 'X-Secret-Key': getSecret() }
-          });
-          const text = await res.text();
           if (navigator.share) {
-            navigator.share({ title: name, text }).catch(() => {});
+            await navigator.share({ title: safeName, text });
           } else {
-            navigator.clipboard.writeText(text).then(() => {
-              shareBtn.textContent = '✅ 복사됨!';
-              setTimeout(() => { shareBtn.textContent = '📤 공유·복사'; }, 2000);
-              return;
-            });
+            await navigator.clipboard.writeText(text);
+            shareBtn.textContent = '✅ 복사됨!';
+            setTimeout(() => { shareBtn.textContent = '📤 공유·복사'; }, 1600);
+            return;
           }
-        } catch(e) {
-          alert('불러오기 실패: ' + e.message);
+        } else {
+          if (navigator.share) {
+            await navigator.share({ title: safeName, text: `📁 ${safeName}`, url });
+          } else {
+            await navigator.clipboard.writeText(url);
+            shareBtn.textContent = '✅ 복사됨!';
+            setTimeout(() => { shareBtn.textContent = '📤 공유·복사'; }, 1600);
+            return;
+          }
         }
-        shareBtn.textContent = '📤 공유·복사';
-        return;
+      } catch (e) {
+        // 사용자가 공유창을 닫은 경우는 오류 알림을 띄우지 않음
+        if (e.name !== 'AbortError') alert('공유/복사 실패: ' + e.message);
       }
-
-      // 일반 파일은 링크 공유
-      if (navigator.share) {
-        navigator.share({ title: name, text: `📁 ${name}`, url }).catch(() => {});
-      } else {
-        navigator.clipboard.writeText(url).then(() => {
-          shareBtn.textContent = '✅ 복사됨!';
-          setTimeout(() => { shareBtn.textContent = '📤 공유·복사'; }, 2000);
-        });
-      }
+      shareBtn.textContent = '📤 공유·복사';
     });
     btnGroup.appendChild(shareBtn);
 
@@ -683,8 +714,10 @@
     row.appendChild(btnGroup);
     card.appendChild(nameRow);
     card.appendChild(row);
+
     return card;
   }
+
 
   // ── 업로드 탭
   const dropzone = document.getElementById('dropzone');
@@ -749,9 +782,13 @@
         const formData = new FormData();
         formData.append('file', file);
 
-        await uploadWithProgress(file, formData, secret, pct => setProgress(pct));
-        const downloadUrl = lastDownloadUrl;
-        results.push({ name: file.name, url: downloadUrl, size: file.size, key: `uploads/${new Date().toISOString().slice(0,10)}/${encodeURIComponent(file.name)}` });
+        const uploaded = await uploadWithProgress(file, formData, secret, pct => setProgress(pct));
+        results.push({
+          name: file.name,
+          url: uploaded.downloadUrl,
+          size: file.size,
+          key: uploaded.key || `uploads/${new Date().toISOString().slice(0,10)}/${file.name}`
+        });
         setProgress(100);
       } catch (e) {
         showError(`${file.name}: ${e.message}`);
@@ -770,24 +807,32 @@
     setTimeout(() => progressWrap.classList.remove('show'), 1500);
   });
 
-  let lastDownloadUrl = '';
-
   function uploadWithProgress(file, formData, secret, onProgress) {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${WORKER_URL}/upload-file`);
       xhr.setRequestHeader('X-Secret-Key', secret);
-      xhr.upload.addEventListener('progress', e => { if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100)); });
+
+      xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100));
+      });
+
       xhr.addEventListener('load', () => {
+        let res = {};
+        try {
+          res = JSON.parse(xhr.responseText || '{}');
+        } catch (e) {
+          reject(new Error('서버 응답을 읽을 수 없습니다.'));
+          return;
+        }
+
         if (xhr.status >= 200 && xhr.status < 300) {
-          const res = JSON.parse(xhr.responseText);
-          lastDownloadUrl = res.downloadUrl;
-          resolve();
+          resolve(res);
         } else {
-          const err = JSON.parse(xhr.responseText || '{}');
-          reject(new Error(err.error || 'HTTP ' + xhr.status));
+          reject(new Error(res.error || 'HTTP ' + xhr.status));
         }
       });
+
       xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
       xhr.send(formData);
     });
