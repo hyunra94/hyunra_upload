@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>파일 업로드</title>
+  <title>📁 파일 업로드</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📁</text></svg>" />
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#f2a7b8" />
@@ -421,7 +421,8 @@
       const date = now.toISOString().slice(0, 10);
       const time = now.toTimeString().slice(0, 8).replace(/:/g, '-');
       const filename = `text_${date}_${time}.txt`;
-      const blob = new Blob([text], { type: 'text/plain; charset=utf-8' });
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + text], { type: 'text/plain; charset=utf-8' });
       const file = new File([blob], filename, { type: 'text/plain' });
 
       const formData = new FormData();
