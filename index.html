@@ -1,668 +1,587 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>파일 업로드</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📁</text></svg>" />
-  <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#f2a7b8" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="파일업로드" />
-  <meta property="og:title" content="파일 업로드" />
-  <meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png" />
-  <meta property="og:url" content="https://hyunraupload.pages.dev/" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --bg: #f7f3ef;
-      --surface: #ffffff;
-      --border: #e8ddd4;
-      --pink: #f2a7b8;
-      --pink-light: #fce8ed;
-      --pink-deep: #e07f96;
-      --green: #a8c5a0;
-      --green-light: #e8f5e5;
-      --text: #3a2e2e;
-      --text-sub: #8a7070;
-      --shadow: 0 4px 20px rgba(180,130,130,0.12);
-      --radius: 16px;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>담담</title>
+<link rel="icon" href="./favicon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#FF8FAB">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--pink:#FF8FAB;--pink-d:#E8557A;--pink-l:#FFD6E0;--pink-p:#FFF0F5;--text:#2D2D2D;--sub:#888;--white:#fff;--bg:#F9F4F6;--r:16px;--sh:0 2px 12px rgba(0,0,0,.07)}
+body{font-family:'Noto Sans KR',sans-serif;background:#EEE5EE;min-height:100dvh;display:flex;justify-content:center}
+.app{width:100%;max-width:480px;background:var(--bg);min-height:100dvh;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(0,0,0,.12)}
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+/* 헤더 */
+.hdr{position:sticky;top:0;z-index:10;background:var(--white);padding:14px 16px;padding-top:calc(14px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+.hdr-title{font-size:22px;font-weight:700;color:var(--pink-d)}
+.hdr-title span{color:var(--pink)}
+.hdr-btns{display:flex;gap:4px}
+.hbtn{width:38px;height:38px;border-radius:50%;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
-    body {
-      font-family: 'Noto Sans KR', sans-serif;
-      background: var(--bg);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      background-image:
-        radial-gradient(circle at 20% 20%, #fce8ed55 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, #e8f5e555 0%, transparent 50%);
-    }
+/* 폴더 */
+.folder-bar{background:var(--white);border-bottom:1px solid #F0E8EC}
+.folder-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none}
+.folder-label{font-size:14px;font-weight:700;color:var(--pink-d);display:flex;align-items:center;gap:8px}
+.folder-arrow{font-size:12px;color:var(--sub);transition:transform .2s}
+.folder-arrow.open{transform:rotate(180deg)}
+.folder-pills{display:none;flex-wrap:wrap;gap:8px;padding:4px 12px 12px}
+.folder-pills.open{display:flex}
+.pill{padding:7px 14px;border-radius:20px;font-size:13px;font-weight:500;border:1.5px solid #EAEAEA;background:var(--white);color:var(--sub);cursor:pointer;font-family:inherit;transition:all .15s}
+.pill.active{background:var(--pink);border-color:var(--pink);color:#fff;font-weight:700}
+.pill.add{border-style:dashed;color:var(--pink);border-color:var(--pink-l)}
 
-    .card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      border: 1.5px solid var(--border);
-      width: 100%;
-      max-width: 520px;
-      overflow: hidden;
-    }
+/* 그리드 */
+.grid{padding:14px 12px;columns:2;column-gap:10px;flex:1}
+.card{break-inside:avoid;background:var(--white);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:10px;overflow:hidden;cursor:pointer;position:relative;transition:transform .15s}
+.card:active{transform:scale(.97)}
+.thumb{width:100%;aspect-ratio:1;object-fit:cover;background:var(--pink-p);display:block}
+.thumb.wide{aspect-ratio:16/9}
+.cbody{padding:8px 10px 10px}
+.ctype{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--pink-d);background:var(--pink-p);padding:2px 7px;border-radius:8px;margin-bottom:4px}
+.ctitle{font-size:13px;font-weight:500;color:var(--text);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.csub{font-size:11px;color:var(--sub);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cfolder{font-size:10px;color:var(--pink);margin-top:4px}
+.cfoot{padding:6px 10px 8px}
+.cmemo{font-size:11px;color:var(--sub);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cmemo-full{padding:14px 12px;font-size:13px;color:var(--text);line-height:1.6;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.cdel{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.55);border:none;cursor:pointer;display:none;align-items:center;justify-content:center;padding:0}
+.cdel svg{width:14px;height:14px}
+.card.edit .cdel{display:flex}
+.card.edit{animation:wg .3s ease infinite alternate}
+@keyframes wg{from{transform:rotate(-1.5deg)}to{transform:rotate(1.5deg)}}
 
-    .card-header {
-      background: linear-gradient(135deg, var(--pink-light) 0%, var(--green-light) 100%);
-      padding: 24px 32px 16px;
-      border-bottom: 1.5px solid var(--border);
-    }
-    .card-header h1 { font-size: 20px; font-weight: 700; color: var(--text); }
-    .card-header p { font-size: 12px; color: var(--text-sub); margin-top: 3px; }
+/* 빈/로딩 */
+.empty{text-align:center;padding:60px 20px;color:var(--sub);column-span:all}
+.eico{font-size:48px;margin-bottom:12px}
+.etit{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.esub{font-size:13px}
+.spin-wrap{text-align:center;padding:60px 20px;column-span:all}
+.spin{width:32px;height:32px;border:3px solid var(--pink-l);border-top-color:var(--pink);border-radius:50%;animation:sp .7s linear infinite;margin:0 auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+.retry-btn{background:var(--pink);color:#fff;border:none;border-radius:20px;padding:8px 18px;font-size:13px;cursor:pointer;font-family:inherit;margin-top:8px}
 
-    /* 공유로 열림 알림 */
-    .share-notice {
-      display: none;
-      background: #e8f5e5;
-      border-bottom: 1.5px solid var(--green);
-      padding: 10px 32px;
-      font-size: 12px;
-      color: #3a6a3a;
-      align-items: center;
-      gap: 6px;
-    }
-    .share-notice.show { display: flex; }
+/* 편집 배너 */
+.edit-bar{display:none;position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:20;white-space:nowrap}
+.edit-bar.on{display:block}
 
-    .key-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 14px 32px;
-      border-bottom: 1.5px solid var(--border);
-      background: #fdfbf9;
-    }
-    .key-bar label { font-size: 13px; font-weight: 500; color: var(--text-sub); white-space: nowrap; }
-    .key-bar input {
-      flex: 1;
-      padding: 8px 12px;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      font-size: 13px;
-      font-family: 'Noto Sans KR', sans-serif;
-      color: var(--text);
-      background: #fff;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .key-bar input:focus { border-color: var(--pink); }
+/* FAB */
+.fab{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));right:calc(50% - 240px + 20px);width:52px;height:52px;border-radius:50%;background:var(--pink);border:none;cursor:pointer;box-shadow:0 4px 16px rgba(255,143,171,.45);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;z-index:15}
+@media(max-width:480px){.fab{right:20px}}
 
-    .tabs { display: flex; border-bottom: 1.5px solid var(--border); }
-    .tab-btn {
-      flex: 1;
-      padding: 12px;
-      border: none;
-      background: none;
-      font-size: 13px;
-      font-weight: 500;
-      font-family: 'Noto Sans KR', sans-serif;
-      color: var(--text-sub);
-      cursor: pointer;
-      border-bottom: 2.5px solid transparent;
-      transition: all 0.2s;
-    }
-    .tab-btn.active {
-      color: var(--pink-deep);
-      border-bottom-color: var(--pink-deep);
-      background: var(--pink-light);
-    }
+/* 모달 공통 */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-end;justify-content:center}
+.overlay.on{display:flex}
+.sheet{width:100%;max-width:480px;background:var(--white);border-radius:24px 24px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));position:relative;animation:su .25s ease;max-height:85dvh;overflow-y:auto}
+@keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:16px}
+.sheet-close{position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;font-size:22px;color:var(--sub)}
+.flabel{font-size:13px;font-weight:700;color:var(--sub);margin-bottom:6px;margin-top:14px}
+.flabel:first-of-type{margin-top:0}
+.finput{width:100%;border:1.5px solid #EAEAEA;border-radius:12px;padding:11px 14px;font-family:inherit;font-size:14px;color:var(--text);outline:none;transition:border-color .15s}
+.finput:focus{border-color:var(--pink)}
+textarea.finput{resize:none;line-height:1.5}
+.fbtn{width:100%;padding:14px;background:var(--pink);border:none;border-radius:14px;font-family:inherit;font-size:16px;font-weight:700;color:#fff;cursor:pointer;margin-top:16px}
+.fbtn.sub{background:none;border:1.5px solid #EAEAEA;color:var(--sub);font-size:14px;padding:12px;margin-top:8px}
+.fbtn:disabled{background:#CCC;cursor:not-allowed}
 
-    .tab-panel { display: none; padding: 24px 32px; }
-    .tab-panel.active { display: flex; flex-direction: column; gap: 18px; }
+/* 삭제 확인 */
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:60;align-items:center;justify-content:center}
+.confirm-overlay.on{display:flex}
+.confirm-box{background:var(--white);border-radius:24px;padding:32px 28px 24px;width:calc(100% - 60px);max-width:320px;text-align:center;animation:pop .2s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.cbtn-row{display:flex;gap:10px;margin-top:24px}
+.cbtn{flex:1;padding:13px;border-radius:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;border:none}
+.cbtn.cancel{background:none;border:1.5px solid #EAEAEA;color:var(--sub);font-weight:600}
+.cbtn.del{background:#FF4D6D;color:#fff}
 
-    .dropzone {
-      border: 2px dashed var(--pink);
-      border-radius: var(--radius);
-      padding: 32px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      background: #fff;
-      position: relative;
-    }
-    .dropzone:hover, .dropzone.drag-over { background: var(--pink-light); border-color: var(--pink-deep); }
-    .dropzone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-    .dropzone-icon { font-size: 32px; margin-bottom: 8px; }
-    .dropzone p { font-size: 14px; font-weight: 500; color: var(--text); }
-    .dropzone span { font-size: 12px; color: var(--text-sub); margin-top: 4px; display: block; }
+/* 뷰어 */
+.viewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:100;flex-direction:column}
+.viewer.on{display:flex}
+.viewer-hdr{display:flex;align-items:center;justify-content:space-between;padding:calc(16px + env(safe-area-inset-top)) 16px 16px}
+.viewer-cnt{font-size:14px;color:rgba(255,255,255,.7)}
+.viewer-x{background:none;border:none;color:#fff;font-size:26px;cursor:pointer;padding:4px}
+.viewer-wrap{flex:1;overflow:hidden}
+.viewer-track{display:flex;height:100%;transition:transform .3s cubic-bezier(.25,.8,.25,1)}
+.viewer-slide{flex-shrink:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:0 8px}
+.viewer-slide img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+.viewer-dots{display:flex;justify-content:center;gap:6px;padding:12px 0 calc(12px + env(safe-area-inset-bottom))}
+.vdot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.35);transition:all .2s}
+.vdot.on{background:#fff;width:18px;border-radius:3px}
 
-    .file-list { display: flex; flex-direction: column; gap: 7px; }
-    .file-item {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--pink-light); border-radius: 9px; padding: 9px 12px; font-size: 13px;
-    }
-    .file-item .file-name { flex: 1; color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .file-item .file-size { color: var(--text-sub); font-size: 12px; flex-shrink: 0; }
-    .file-item .remove-btn { background: none; border: none; cursor: pointer; color: var(--pink-deep); font-size: 15px; padding: 0; flex-shrink: 0; line-height: 1; }
+/* 추가모달 탭 */
+.type-tabs{display:flex;gap:8px;margin-bottom:16px}
+.ttab{flex:1;padding:9px;border-radius:12px;border:1.5px solid #EAEAEA;background:var(--white);font-family:inherit;font-size:13px;font-weight:500;color:var(--sub);cursor:pointer;text-align:center;transition:all .15s}
+.ttab.on{background:var(--pink-p);border-color:var(--pink);color:var(--pink-d);font-weight:700}
+.folder-sel{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.fsel-btn{padding:7px 14px;border-radius:20px;font-size:13px;font-weight:500;border:1.5px solid #EAEAEA;background:var(--white);color:var(--sub);cursor:pointer;font-family:inherit;transition:all .15s}
+.fsel-btn.on{background:var(--pink-p);border-color:var(--pink);color:var(--pink-d);font-weight:700}
+.file-pick{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;border:2px dashed var(--pink-l);border-radius:12px;cursor:pointer;color:var(--pink);font-size:14px;font-weight:500;margin-top:6px}
+.file-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.file-preview img{width:64px;height:64px;object-fit:cover;border-radius:10px}
 
-    .progress-wrap { display: none; }
-    .progress-wrap.show { display: block; }
-    .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-sub); margin-bottom: 6px; }
-    .progress-bar-bg { background: var(--border); border-radius: 100px; height: 8px; overflow: hidden; }
-    .progress-bar-fill { background: linear-gradient(90deg, var(--pink), var(--green)); height: 100%; border-radius: 100px; width: 0%; transition: width 0.3s ease; }
-
-    .upload-btn {
-      width: 100%; padding: 12px;
-      background: linear-gradient(135deg, var(--pink) 0%, var(--green) 100%);
-      border: none; border-radius: 12px; color: #fff;
-      font-size: 15px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif;
-      cursor: pointer; transition: opacity 0.2s, transform 0.1s;
-    }
-    .upload-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
-    .upload-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    .result-box { display: none; flex-direction: column; gap: 8px; }
-    .result-box.show { display: flex; }
-
-    .error-box { display: none; background: #fff0f0; border: 1.5px solid #f5b8b8; border-radius: 10px; padding: 11px 14px; font-size: 13px; color: #c0392b; }
-    .error-box.show { display: block; }
-
-    .fcard { background: var(--green-light); border: 1.5px solid var(--green); border-radius: 10px; padding: 11px 14px; }
-    .fcard-name {
-      font-size: 12px; color: var(--text-sub); margin-bottom: 5px;
-      display: flex; align-items: center; gap: 5px;
-    }
-    .fcard-name span:first-child {
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .fcard-meta { margin-left: auto; font-size: 11px; color: var(--text-sub); }
-    .fcard-row { display: flex; align-items: center; gap: 6px; }
-    .fcard-url-hidden { display: none; }
-    .btn-group { display: flex; gap: 6px; flex-shrink: 0; width: 100%; }
-    .copy-btn, .share-btn, .open-btn { border: none; border-radius: 7px; color: #fff; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; padding: 7px 8px; cursor: pointer; white-space: nowrap; transition: background 0.2s; flex: 1; text-align: center; }
-    .copy-btn { background: var(--pink); }
-    .copy-btn:hover { background: var(--pink-deep); }
-    .copy-btn.copied { background: var(--green); }
-    .share-btn { background: var(--green); }
-    .share-btn:hover { background: #7aaa72; }
-    .open-btn { background: #a0b4e0; }
-    .open-btn:hover { background: #7a96cc; }
-    .download-btn { background: var(--pink); }
-    .download-btn:hover { background: var(--pink-deep); }
-    .delete-btn { background: none; border: 1.5px solid #f5b8b8; border-radius: 7px; color: #c0392b; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; padding: 5px 8px; cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
-    .delete-btn:hover { background: #fff0f0; }
-
-    .list-header { display: flex; align-items: center; justify-content: space-between; }
-    .list-header span { font-size: 13px; color: var(--text-sub); }
-    .refresh-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; color: var(--text-sub); cursor: pointer; transition: all 0.2s; }
-    .refresh-btn:hover { border-color: var(--pink); color: var(--pink-deep); }
-    .list-loading, .list-empty { text-align: center; padding: 32px; color: var(--text-sub); font-size: 13px; }
-    .list-items { display: flex; flex-direction: column; gap: 8px; }
-    .date-divider { font-size: 11px; font-weight: 700; color: var(--text-sub); letter-spacing: 0.5px; padding: 4px 0 2px; border-bottom: 1px solid var(--border); }
-    .expire-note { text-align: center; font-size: 11px; color: var(--text-sub); }
-
-    /* 단축 링크 */
-    .shortlink-wrap {
-      background: var(--pink-light);
-      border: 1.5px solid var(--pink);
-      border-radius: 12px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .shortlink-label { font-size: 12px; color: var(--text-sub); white-space: nowrap; }
-    .shortlink-url {
-      flex: 1;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--pink-deep);
-      filter: blur(5px);
-      cursor: pointer;
-      user-select: none;
-      transition: filter 0.3s;
-      text-decoration: none;
-    }
-    .shortlink-url.revealed {
-      filter: none;
-      cursor: pointer;
-    }
-    .shortlink-hint { font-size: 11px; color: var(--text-sub); white-space: nowrap; }
-  </style>
+/* 토스트 */
+.toast{position:fixed;bottom:calc(30px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;white-space:nowrap;animation:ft 2.5s ease forwards;z-index:999}
+@keyframes ft{0%{opacity:0;transform:translateX(-50%) translateY(10px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}
+</style>
 </head>
 <body>
+<div class="app">
 
-<div class="card">
+<div class="hdr">
+  <div class="hdr-title">담<span>담</span></div>
+  <div class="hdr-btns">
+    <button class="hbtn" id="editBtn" onclick="toggleEdit()">
+      <svg id="editIcon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#E8557A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+    </button>
+    <button class="hbtn" onclick="openSettings()">⚙️</button>
+  </div>
+</div>
 
-  <div class="card-header">
-    <h1>📁 파일 업로드</h1>
-    <p>비밀키 입력 후 파일을 올리거나 목록을 확인하세요 · 7일 후 자동 삭제</p>
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px;">
-      <span class="shortlink-url" id="shortlink" onclick="revealLink()" style="font-size:12px;">https://bit.ly/gusfkdid</span>
-      <span class="shortlink-hint" id="shortlinkHint" style="font-size:11px; color:var(--text-sub);">탭하면 공개</span>
+<div class="folder-bar">
+  <div class="folder-toggle-row" onclick="toggleFolders()">
+    <div class="folder-label">📁 <span id="folderLabel">전체</span></div>
+    <span class="folder-arrow" id="folderArrow">▾</span>
+  </div>
+  <div class="folder-pills" id="folderPills"></div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="spin-wrap"><div class="spin"></div></div>
+</div>
+
+<div class="edit-bar" id="editBar">카드를 눌러 삭제 &nbsp;|&nbsp; 다시 눌러 완료</div>
+<button class="fab" onclick="openAdd()">＋</button>
+
+</div><!-- app -->
+
+<!-- 삭제 확인 -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div style="font-size:40px;margin-bottom:14px">🗑️</div>
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:10px">정말 삭제할까요?</div>
+    <div style="font-size:14px;color:var(--sub);line-height:1.8">한번 삭제하면<br>되돌릴 수 없어요</div>
+    <div class="cbtn-row">
+      <button class="cbtn cancel" onclick="closeConfirm()">취소</button>
+      <button class="cbtn del" onclick="doDelete()">삭제</button>
     </div>
   </div>
+</div>
 
-  <!-- 공유로 열림 알림 -->
-  <div class="share-notice" id="shareNotice">
-    📤 갤러리에서 공유된 파일이 자동으로 추가됐어요!
+<!-- 이미지 뷰어 -->
+<div class="viewer" id="viewer">
+  <div class="viewer-hdr">
+    <span class="viewer-cnt" id="viewerCnt"></span>
+    <button class="viewer-x" onclick="closeViewer()">✕</button>
   </div>
-
-  <div class="key-bar">
-    <label>🔑 비밀키</label>
-    <input type="password" id="secretKey" placeholder="비밀키를 입력하세요" />
+  <div class="viewer-wrap" id="viewerWrap">
+    <div class="viewer-track" id="viewerTrack"></div>
   </div>
+  <div class="viewer-dots" id="viewerDots"></div>
+</div>
 
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="upload">⬆️ 업로드</button>
-    <button class="tab-btn" data-tab="list">📋 내 파일 목록</button>
-  </div>
-
-  <div class="tab-panel active" id="tab-upload">
-    <div class="dropzone" id="dropzone">
-      <input type="file" id="fileInput" multiple />
-      <div class="dropzone-icon">📂</div>
-      <p>파일을 드래그하거나 클릭해서 선택</p>
-      <span>최대 5GB · 여러 파일 동시 업로드 가능</span>
+<!-- 직접 추가 -->
+<div class="overlay" id="addOverlay" onclick="if(event.target===this)closeAdd()">
+  <div class="sheet">
+    <button class="sheet-close" onclick="closeAdd()">✕</button>
+    <div class="sheet-title">✚ 직접 추가</div>
+    <div class="type-tabs">
+      <button class="ttab on" onclick="setAddType('link',this)">🔗 링크</button>
+      <button class="ttab" onclick="setAddType('image',this)">🖼 이미지</button>
+      <button class="ttab" onclick="setAddType('memo',this)">📝 메모</button>
     </div>
-    <div class="file-list" id="fileList"></div>
-    <div class="progress-wrap" id="progressWrap">
-      <div class="progress-label">
-        <span id="progressText">업로드 중...</span>
-        <span id="progressPct">0%</span>
-      </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="progressFill"></div>
-      </div>
+    <div id="addLink">
+      <div class="flabel">URL</div>
+      <input class="finput" id="addUrl" type="url" placeholder="https://...">
     </div>
-    <div class="error-box" id="errorBox"></div>
-    <div class="result-box" id="resultBox"></div>
-    <button class="upload-btn" id="uploadBtn" disabled>업로드</button>
-    <p class="expire-note">🗓 업로드된 파일은 7일 후 자동으로 삭제됩니다</p>
+    <div id="addImage" style="display:none">
+      <div class="flabel">이미지 선택</div>
+      <label class="file-pick">📎 파일 선택
+        <input type="file" accept="image/*" multiple style="display:none" id="addFile" onchange="previewAdd(this)">
+      </label>
+      <div class="file-preview" id="addPreview"></div>
+    </div>
+    <div id="addMemo" style="display:none">
+      <div class="flabel">내용</div>
+      <textarea class="finput" id="addMemoText" rows="4" placeholder="메모 내용을 입력하세요"></textarea>
+    </div>
+    <div class="flabel">폴더</div>
+    <div class="folder-sel" id="addFolderSel"></div>
+    <div id="addMemoWrap">
+      <div class="flabel">메모 <span style="font-weight:400;color:#bbb">(선택)</span></div>
+      <input class="finput" id="addMemoNote" placeholder="키워드로 메모해두면 쉽게 찾아볼 수 있어요!">
+    </div>
+    <button class="fbtn" id="addBtn" onclick="submitAdd()">저장</button>
   </div>
+</div>
 
-  <div class="tab-panel" id="tab-list">
-    <div class="list-header">
-      <span id="listCount">R2에 저장된 파일 목록</span>
-      <button class="refresh-btn" id="refreshBtn">🔄 새로고침</button>
-    </div>
-    <div class="error-box" id="listErrorBox"></div>
-    <div id="listContent">
-      <div class="list-empty">비밀키를 입력하고 새로고침을 눌러주세요 🔑</div>
-    </div>
-    <p class="expire-note">🗓 업로드된 파일은 7일 후 자동으로 삭제됩니다</p>
+<!-- 설정 -->
+<div class="overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+  <div class="sheet">
+    <button class="sheet-close" onclick="closeSettings()">✕</button>
+    <div class="sheet-title">⚙️ 설정</div>
+    <div class="flabel">Worker URL</div>
+    <input class="finput" id="cfgUrl" type="url" placeholder="https://xxx.workers.dev">
+    <div class="flabel">Secret Key</div>
+    <input class="finput" id="cfgKey" type="password" placeholder="비밀 키 입력">
+    <button class="fbtn" onclick="saveSettings()">저장</button>
   </div>
-
 </div>
 
 <script>
-  const WORKER_URL = 'https://file-upload.hyunra94.workers.dev';
+// ── 설정 ──────────────────────────────────────────────────────────────────
+var WU = localStorage.getItem('damdam_worker_url') || '';
+var SK = localStorage.getItem('damdam_secret_key') || '';
+var curFolder = 'all', editOn = false, folderOpen = false;
+var allItems = [], allFolders = [], delPending = null;
+var vItems = [], vIdx = 0, tStart = 0;
+var addType = 'link', addFolder = '';
 
-  const secretKeyInput = document.getElementById('secretKey');
-  const getSecret = () => secretKeyInput.value.trim();
-
-  // ── 비밀키 저장/불러오기
-  const SAVED_KEY = 'upload_secret';
-  const saved = localStorage.getItem(SAVED_KEY);
-  if (saved) secretKeyInput.value = saved;
-  secretKeyInput.addEventListener('change', () => {
-    if (secretKeyInput.value.trim()) localStorage.setItem(SAVED_KEY, secretKeyInput.value.trim());
-  });
-
-  // ── 단축 링크 모자이크 해제
-  function revealLink() {
-    document.getElementById('shortlink').classList.add('revealed');
-    document.getElementById('shortlinkHint').style.display = 'none';
-  }
-
-  // ── 서비스워커 등록
+// ── 시작 ──────────────────────────────────────────────────────────────────
+window.onload = function() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(console.error);
+    navigator.serviceWorker.register('./sw.js').catch(function(){});
   }
+  if (!WU || !SK) {
+    showGrid('<div class="empty"><div class="eico">⚙️</div><div class="etit">설정이 필요해요</div><div class="esub">우측 상단 ⚙️를 눌러주세요</div></div>');
+    openSettings();
+    return;
+  }
+  loadAll();
+};
 
-  // ── 공유로 열린 경우 파일 복원
-  async function loadSharedFiles() {
-    const params = new URLSearchParams(location.search);
-    if (!params.has('shared')) return;
+function loadAll() {
+  loadFolders();
+  loadItems(curFolder);
+}
 
-    // URL 파라미터 제거
-    history.replaceState({}, '', '/');
+// ── 폴더 ──────────────────────────────────────────────────────────────────
+function loadFolders() {
+  apiFetch('/folders', 'GET', null, function(data) {
+    allFolders = (data && data.folders) || [];
+    renderPills();
+  }, function() {});
+}
 
-    try {
-      const cache = await caches.open('share-target-v1');
-      const res = await cache.match('/shared-files');
-      if (!res) return;
+function renderPills() {
+  var wrap = document.getElementById('folderPills');
+  wrap.innerHTML = '';
+  makePill('전체', 'all', wrap);
+  allFolders.forEach(function(n) { makePill(n, n, wrap); });
+  var add = document.createElement('button');
+  add.className = 'pill add';
+  add.textContent = '+ 추가';
+  add.onclick = function() { addFolderPrompt(); };
+  wrap.appendChild(add);
+}
 
-      const fileDataList = await res.json();
-      await cache.delete('/shared-files');
+function makePill(label, val, wrap) {
+  var b = document.createElement('button');
+  b.className = 'pill' + (curFolder === val ? ' active' : '');
+  b.textContent = label;
+  b.onclick = function() { selectFolder(val, b); };
+  wrap.appendChild(b);
+}
 
-      const files = fileDataList.map(f => {
-        const uint8 = new Uint8Array(f.data);
-        const blob = new Blob([uint8], { type: f.type });
-        return new File([blob], f.name, { type: f.type });
-      });
+function selectFolder(val, btn) {
+  curFolder = val;
+  document.querySelectorAll('.pill').forEach(function(p) { p.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById('folderLabel').textContent = val === 'all' ? '전체' : val;
+  toggleFolders(false);
+  loadItems(val);
+}
 
-      addFiles(files);
-      document.getElementById('shareNotice').classList.add('show');
-      setTimeout(() => document.getElementById('shareNotice').classList.remove('show'), 4000);
-    } catch (e) {
-      console.error('공유 파일 복원 실패:', e);
+function toggleFolders(force) {
+  folderOpen = force !== undefined ? force : !folderOpen;
+  document.getElementById('folderPills').classList.toggle('open', folderOpen);
+  document.getElementById('folderArrow').classList.toggle('open', folderOpen);
+}
+
+function addFolderPrompt() {
+  var n = prompt('새 폴더 이름');
+  if (!n || !n.trim()) return;
+  n = n.trim();
+  if (allFolders.indexOf(n) >= 0) { toast('이미 있는 폴더예요'); return; }
+  allFolders.push(n);
+  renderPills();
+  toast('"' + n + '" 폴더 추가됐어요 🌸');
+}
+
+// ── 아이템 ────────────────────────────────────────────────────────────────
+function loadItems(folder) {
+  showGrid('<div class="spin-wrap"><div class="spin"></div></div>');
+  var timer = setTimeout(function() {
+    if (document.querySelector('.spin')) {
+      showGrid('<div class="empty"><div class="eico">😢</div><div class="etit">응답 없음</div><div class="esub" style="margin-top:8px"><button class="retry-btn" onclick="loadItems(\'' + folder + '\')">다시 시도</button></div></div>');
     }
-  }
+  }, 12000);
+  apiFetch('/list?folder=' + encodeURIComponent(folder), 'GET', null,
+    function(data) {
+      clearTimeout(timer);
+      allItems = (data && data.items) || [];
+      renderItems();
+    },
+    function(e) {
+      clearTimeout(timer);
+      showGrid('<div class="empty"><div class="eico">😢</div><div class="etit">불러오기 실패</div><div class="esub" style="margin-top:8px"><button class="retry-btn" onclick="loadItems(\'' + folder + '\')">다시 시도</button></div></div>');
+    }
+  );
+}
 
-  // ── 탭 전환
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-      if (btn.dataset.tab === 'list') loadList();
-    });
+function showGrid(html) {
+  document.getElementById('grid').innerHTML = html;
+}
+
+function renderItems() {
+  if (!allItems.length) {
+    showGrid('<div class="empty"><div class="eico">🌸</div><div class="etit">아직 저장된 게 없어요</div><div class="esub">공유 버튼으로 담담에 저장해보세요!</div></div>');
+    return;
+  }
+  var grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  allItems.forEach(function(item) { grid.appendChild(buildCard(item)); });
+}
+
+var TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
+
+function buildCard(item) {
+  var card = document.createElement('div');
+  card.className = 'card' + (editOn ? ' edit' : '');
+  var del = document.createElement('button');
+  del.className = 'cdel'; del.innerHTML = TRASH;
+  del.onclick = function(e) { e.stopPropagation(); openConfirm(item, card); };
+  card.appendChild(del);
+
+  if (item.type === 'image') {
+    var key = item.image_key || '';
+    var src = key.indexOf('http') === 0 ? key : WU + '/r2/' + encodeURIComponent(key);
+    var img = document.createElement('img');
+    img.className = 'thumb'; img.src = src; img.alt = '';
+    img.onerror = function() { img.style.display = 'none'; };
+    card.appendChild(img);
+    var foot = document.createElement('div');
+    foot.className = 'cfoot';
+    foot.innerHTML = '<span class="ctype">🖼 이미지</span>' + (item.folder ? '<div class="cfolder"># ' + esc(item.folder) + '</div>' : '');
+    card.appendChild(foot);
+    card.onclick = function() {
+      if (editOn) return;
+      var imgs = allItems.filter(function(i) { return i.type === 'image'; });
+      openViewer(imgs, imgs.findIndex(function(i) { return i.id === item.id; }));
+    };
+
+  } else if (item.type === 'link') {
+    if (item.image_key) {
+      var img2 = document.createElement('img');
+      img2.className = 'thumb wide'; img2.src = item.image_key; img2.alt = '';
+      img2.onerror = function() { img2.style.display = 'none'; };
+      card.appendChild(img2);
+    }
+    var body = document.createElement('div');
+    body.className = 'cbody';
+    body.innerHTML = '<span class="ctype">🔗 링크</span><div class="ctitle">' + esc(item.title) + '</div>' +
+      (item.url ? '<div class="csub">' + esc(domain(item.url)) + '</div>' : '') +
+      (item.memo ? '<div class="cmemo">' + esc(item.memo) + '</div>' : '') +
+      (item.folder ? '<div class="cfolder"># ' + esc(item.folder) + '</div>' : '');
+    card.appendChild(body);
+    card.onclick = function() { if (!editOn && item.url) window.open(item.url, '_blank'); };
+
+  } else {
+    card.innerHTML += '<div class="cmemo-full">' + esc(item.memo || item.title) + '</div>' +
+      '<div class="cbody" style="padding-top:0"><span class="ctype">📝 메모</span>' +
+      (item.folder ? '<div class="cfolder"># ' + esc(item.folder) + '</div>' : '') + '</div>';
+  }
+  return card;
+}
+
+// ── 뷰어 ──────────────────────────────────────────────────────────────────
+function openViewer(imgs, start) {
+  vItems = imgs; vIdx = start;
+  var track = document.getElementById('viewerTrack');
+  var dots = document.getElementById('viewerDots');
+  track.innerHTML = dots.innerHTML = '';
+  imgs.forEach(function(item, i) {
+    var key = item.image_key || '';
+    var src = key.indexOf('http') === 0 ? key : WU + '/r2/' + encodeURIComponent(key);
+    var s = document.createElement('div'); s.className = 'viewer-slide';
+    s.innerHTML = '<img src="' + esc(src) + '" alt="">';
+    track.appendChild(s);
+    var d = document.createElement('div'); d.className = 'vdot' + (i === start ? ' on' : '');
+    dots.appendChild(d);
   });
+  goViewer(start, false);
+  document.getElementById('viewer').classList.add('on');
+  var wrap = document.getElementById('viewerWrap');
+  wrap.ontouchstart = function(e) { tStart = e.touches[0].clientX; };
+  wrap.ontouchend = function(e) {
+    var dx = e.changedTouches[0].clientX - tStart;
+    if (Math.abs(dx) > 50) goViewer(vIdx + (dx < 0 ? 1 : -1), true);
+  };
+}
+function goViewer(idx, anim) {
+  vIdx = Math.max(0, Math.min(vItems.length - 1, idx));
+  var t = document.getElementById('viewerTrack');
+  t.style.transition = anim ? 'transform .3s cubic-bezier(.25,.8,.25,1)' : 'none';
+  t.style.transform = 'translateX(-' + (vIdx * 100) + '%)';
+  document.getElementById('viewerCnt').textContent = (vIdx + 1) + ' / ' + vItems.length;
+  document.querySelectorAll('.vdot').forEach(function(d, i) { d.classList.toggle('on', i === vIdx); });
+}
+function closeViewer() { document.getElementById('viewer').classList.remove('on'); }
 
-  // ── 공통 유틸
-  function formatSize(bytes) {
-    if (!bytes) return '';
-    if (bytes < 1024) return bytes + 'B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
-    if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + 'MB';
-    return (bytes / 1024 / 1024 / 1024).toFixed(2) + 'GB';
+// ── 삭제 ──────────────────────────────────────────────────────────────────
+function openConfirm(item, card) { delPending = {item:item, card:card}; document.getElementById('confirmOverlay').classList.add('on'); }
+function closeConfirm() { delPending = null; document.getElementById('confirmOverlay').classList.remove('on'); }
+function doDelete() {
+  if (!delPending) return;
+  var item = delPending.item, card = delPending.card;
+  closeConfirm();
+  apiFetch('/delete', 'POST', {id:item.id, image_key:item.image_key},
+    function() {
+      card.style.transition = 'all .2s'; card.style.opacity = '0'; card.style.transform = 'scale(0.8)';
+      setTimeout(function() { card.remove(); }, 200);
+      allItems = allItems.filter(function(i) { return i.id !== item.id; });
+      toast('삭제했어요');
+    },
+    function(e) { toast('삭제 실패'); }
+  );
+}
+
+// ── 편집 ──────────────────────────────────────────────────────────────────
+function toggleEdit() {
+  editOn = !editOn;
+  document.getElementById('editIcon').outerHTML = editOn
+    ? '<svg id="editIcon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#4CAF50" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+    : '<svg id="editIcon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#E8557A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
+  document.getElementById('editBar').classList.toggle('on', editOn);
+  document.querySelectorAll('.card').forEach(function(c) { c.classList.toggle('edit', editOn); });
+}
+
+// ── 설정 ──────────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('cfgUrl').value = WU;
+  document.getElementById('cfgKey').value = SK;
+  document.getElementById('settingsOverlay').classList.add('on');
+}
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('on'); }
+function saveSettings() {
+  WU = document.getElementById('cfgUrl').value.trim().replace(/\/$/, '');
+  SK = document.getElementById('cfgKey').value.trim();
+  localStorage.setItem('damdam_worker_url', WU);
+  localStorage.setItem('damdam_secret_key', SK);
+  closeSettings(); toast('설정 저장 완료!');
+  setTimeout(function() { location.reload(); }, 800);
+}
+async function resetApp() {
+  if ('serviceWorker' in navigator) {
+    var regs = await navigator.serviceWorker.getRegistrations();
+    for (var r of regs) await r.unregister();
+    var keys = await caches.keys();
+    for (var k of keys) await caches.delete(k);
   }
+  toast('초기화 완료! 새로고침합니다...');
+  setTimeout(function() { location.reload(true); }, 1000);
+}
 
-  function makeFcard({ name, url, size, key }) {
-    const card = document.createElement('div');
-    card.className = 'fcard';
-    const nameRow = document.createElement('div');
-    nameRow.className = 'fcard-name';
-    nameRow.innerHTML = `<span>📄 ${name}</span>`;
-    if (size) {
-      const meta = document.createElement('span');
-      meta.className = 'fcard-meta';
-      meta.textContent = formatSize(size);
-      nameRow.appendChild(meta);
-    }
-    const row = document.createElement('div');
-    row.className = 'fcard-row';
-
-    // URL은 숨기고 버튼만 표시
-    const linkEl = document.createElement('div');
-    linkEl.className = 'fcard-url-hidden';
-    linkEl.textContent = url;
-
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'copy-btn';
-    copyBtn.style.flex = '1';
-    copyBtn.textContent = '📋 링크복사';
-    copyBtn.addEventListener('click', () => {
-      navigator.clipboard.writeText(url).then(() => {
-        copyBtn.textContent = '✅ 복사됨!';
-        copyBtn.classList.add('copied');
-        setTimeout(() => { copyBtn.textContent = '📋 링크복사'; copyBtn.classList.remove('copied'); }, 2000);
-      });
-    });
-
-    const btnGroup = document.createElement('div');
-    btnGroup.className = 'btn-group';
-
-    // 바로가기 버튼
-    const openBtn = document.createElement('button');
-    openBtn.className = 'open-btn';
-    openBtn.textContent = '🔗 바로가기';
-    openBtn.addEventListener('click', () => window.open(url, '_blank'));
-    btnGroup.appendChild(openBtn);
-
-    // 다운로드 버튼
-    const dlBtn = document.createElement('button');
-    dlBtn.className = 'copy-btn';
-    dlBtn.textContent = '⬇️ 다운로드';
-    dlBtn.addEventListener('click', async () => {
-      dlBtn.textContent = '⏳ 준비 중...';
-      try {
-        const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
-          headers: { 'X-Secret-Key': getSecret() }
-        });
-        if (!res.ok) throw new Error('다운로드 실패');
-        const blob = await res.blob();
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
-      } catch(e) {
-        alert('다운로드 실패: ' + e.message);
-      }
-      dlBtn.textContent = '⬇️ 다운로드';
-    });
-    btnGroup.appendChild(dlBtn);
-
-    // 공유·복사 버튼 (공유 API 지원 시 공유 시트, 미지원 시 링크복사)
-    const shareBtn = document.createElement('button');
-    shareBtn.className = 'share-btn';
-    shareBtn.textContent = '📤 공유·복사';
-    shareBtn.addEventListener('click', () => {
-      if (navigator.share) {
-        navigator.share({ title: name, text: `📁 ${name}`, url }).catch(() => {});
-      } else {
-        navigator.clipboard.writeText(url).then(() => {
-          shareBtn.textContent = '✅ 복사됨!';
-          setTimeout(() => { shareBtn.textContent = '📤 공유·복사'; }, 2000);
-        });
-      }
-    });
-    btnGroup.appendChild(shareBtn);
-
-    row.appendChild(linkEl);
-    row.appendChild(btnGroup);
-    card.appendChild(nameRow);
-    card.appendChild(row);
-    return card;
-  }
-
-  // ── 업로드 탭
-  const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('fileInput');
-  const fileListEl = document.getElementById('fileList');
-  const uploadBtn = document.getElementById('uploadBtn');
-  const progressWrap = document.getElementById('progressWrap');
-  const progressFill = document.getElementById('progressFill');
-  const progressText = document.getElementById('progressText');
-  const progressPct = document.getElementById('progressPct');
-  const resultBox = document.getElementById('resultBox');
-  const errorBox = document.getElementById('errorBox');
-
-  let selectedFiles = [];
-
-  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
-  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
-  dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); });
-  fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fileInput.value = ''; });
-
-  function addFiles(files) {
-    files.forEach(f => { if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f); });
-    renderFileList();
-  }
-
-  function renderFileList() {
-    fileListEl.innerHTML = '';
-    selectedFiles.forEach((f, i) => {
-      const item = document.createElement('div');
-      item.className = 'file-item';
-      item.innerHTML = `<span>📄</span><span class="file-name">${f.name}</span><span class="file-size">${formatSize(f.size)}</span><button class="remove-btn" data-i="${i}">✕</button>`;
-      fileListEl.appendChild(item);
-    });
-    fileListEl.querySelectorAll('.remove-btn').forEach(btn => {
-      btn.addEventListener('click', () => { selectedFiles.splice(Number(btn.dataset.i), 1); renderFileList(); });
-    });
-    uploadBtn.disabled = selectedFiles.length === 0;
-  }
-
-  function showError(msg) { errorBox.textContent = '⚠️ ' + msg; errorBox.classList.add('show'); }
-  function hideError() { errorBox.classList.remove('show'); }
-  function setProgress(pct) { progressFill.style.width = pct + '%'; progressPct.textContent = pct + '%'; }
-
-  uploadBtn.addEventListener('click', async () => {
-    const secret = getSecret();
-    if (!secret) { showError('비밀키를 입력해주세요.'); return; }
-    if (!selectedFiles.length) { showError('파일을 선택해주세요.'); return; }
-
-    hideError();
-    resultBox.innerHTML = '';
-    resultBox.classList.remove('show');
-    progressWrap.classList.add('show');
-    uploadBtn.disabled = true;
-
-    const results = [];
-
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const file = selectedFiles[i];
-      progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${file.name} 업로드 중...`;
-      setProgress(0);
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        await uploadWithProgress(file, formData, secret, pct => setProgress(pct));
-        const downloadUrl = lastDownloadUrl;
-        results.push({ name: file.name, url: downloadUrl, size: file.size, key: `uploads/${new Date().toISOString().slice(0,10)}/${encodeURIComponent(file.name)}` });
-        setProgress(100);
-      } catch (e) {
-        showError(`${file.name}: ${e.message}`);
-        progressWrap.classList.remove('show');
-        uploadBtn.disabled = false;
-        return;
-      }
-    }
-
-    progressText.textContent = '✅ 모든 파일 업로드 완료!';
-    setProgress(100);
-    results.forEach(r => resultBox.appendChild(makeFcard(r)));
-    resultBox.classList.add('show');
-    selectedFiles = [];
-    renderFileList();
-    setTimeout(() => progressWrap.classList.remove('show'), 1500);
+// ── 직접 추가 ─────────────────────────────────────────────────────────────
+function openAdd() {
+  addType = 'link'; addFolder = '';
+  document.getElementById('addUrl').value = '';
+  document.getElementById('addMemoNote').value = '';
+  document.getElementById('addMemoText').value = '';
+  document.getElementById('addPreview').innerHTML = '';
+  document.getElementById('addFile').value = '';
+  document.querySelectorAll('.ttab').forEach(function(t, i) { t.classList.toggle('on', i === 0); });
+  document.getElementById('addLink').style.display = '';
+  document.getElementById('addImage').style.display = 'none';
+  document.getElementById('addMemo').style.display = 'none';
+  document.getElementById('addMemoWrap').style.display = '';
+  renderAddFolders();
+  document.getElementById('addOverlay').classList.add('on');
+}
+function closeAdd() { document.getElementById('addOverlay').classList.remove('on'); }
+function setAddType(t, btn) {
+  addType = t;
+  document.querySelectorAll('.ttab').forEach(function(b) { b.classList.remove('on'); });
+  btn.classList.add('on');
+  document.getElementById('addLink').style.display = t === 'link' ? '' : 'none';
+  document.getElementById('addImage').style.display = t === 'image' ? '' : 'none';
+  document.getElementById('addMemo').style.display = t === 'memo' ? '' : 'none';
+  document.getElementById('addMemoWrap').style.display = t === 'memo' ? 'none' : '';
+}
+function renderAddFolders() {
+  var sel = document.getElementById('addFolderSel'); sel.innerHTML = '';
+  allFolders.forEach(function(n) {
+    var b = document.createElement('button'); b.className = 'fsel-btn'; b.textContent = n;
+    b.onclick = function() {
+      addFolder = n;
+      document.querySelectorAll('.fsel-btn').forEach(function(x) { x.classList.remove('on'); });
+      b.classList.add('on');
+    };
+    sel.appendChild(b);
   });
+}
+function previewAdd(input) {
+  var p = document.getElementById('addPreview'); p.innerHTML = '';
+  Array.from(input.files).forEach(function(f) {
+    var img = document.createElement('img'); img.src = URL.createObjectURL(f); p.appendChild(img);
+  });
+}
+function submitAdd() {
+  var btn = document.getElementById('addBtn');
+  btn.disabled = true; btn.textContent = '저장 중...';
+  var done = function() { btn.disabled = false; btn.textContent = '저장'; };
 
-  let lastDownloadUrl = '';
+  if (addType === 'link') {
+    var url = document.getElementById('addUrl').value.trim();
+    if (!url) { toast('URL을 입력해주세요'); done(); return; }
+    apiFetch('/save-link', 'POST', {url:url, folder:addFolder, memo:document.getElementById('addMemoNote').value.trim()},
+      function() { toast('담았어요 🌸'); closeAdd(); loadItems(curFolder); done(); },
+      function() { toast('저장 실패'); done(); });
 
-  function uploadWithProgress(file, formData, secret, onProgress) {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${WORKER_URL}/upload-file`);
-      xhr.setRequestHeader('X-Secret-Key', secret);
-      xhr.upload.addEventListener('progress', e => { if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100)); });
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const res = JSON.parse(xhr.responseText);
-          lastDownloadUrl = res.downloadUrl;
-          resolve();
-        } else {
-          const err = JSON.parse(xhr.responseText || '{}');
-          reject(new Error(err.error || 'HTTP ' + xhr.status));
-        }
-      });
-      xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
-      xhr.send(formData);
-    });
+  } else if (addType === 'image') {
+    var files = document.getElementById('addFile').files;
+    if (!files.length) { toast('이미지를 선택해주세요'); done(); return; }
+    var fd = new FormData();
+    Array.from(files).forEach(function(f) { fd.append('images', f); });
+    fd.append('folder', addFolder);
+    fd.append('memo', document.getElementById('addMemoNote').value.trim());
+    fetch(WU + '/save-images', {method:'POST', headers:{'X-Secret-Key':SK}, body:fd})
+      .then(function() { toast('담았어요 🌸'); closeAdd(); loadItems(curFolder); done(); })
+      .catch(function() { toast('저장 실패'); done(); });
+
+  } else {
+    var txt = document.getElementById('addMemoText').value.trim();
+    if (!txt) { toast('내용을 입력해주세요'); done(); return; }
+    apiFetch('/save-link', 'POST', {title:txt, url:'', folder:addFolder, memo:txt},
+      function() { toast('담았어요 🌸'); closeAdd(); loadItems(curFolder); done(); },
+      function() { toast('저장 실패'); done(); });
   }
+}
 
-  // ── 파일 목록 탭
-  const listContent = document.getElementById('listContent');
-  const listCount = document.getElementById('listCount');
-  const listErrorBox = document.getElementById('listErrorBox');
+// ── API (콜백 방식 - async/await 없음) ───────────────────────────────────
+function apiFetch(path, method, body, onOk, onErr) {
+  var xhr = new XMLHttpRequest();
+  xhr.open(method, WU + path, true);
+  xhr.setRequestHeader('X-Secret-Key', SK);
+  if (body && method !== 'GET') xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.timeout = 10000;
+  xhr.onload = function() {
+    try { onOk(JSON.parse(xhr.responseText)); } catch(e) { onErr(e); }
+  };
+  xhr.onerror = onErr;
+  xhr.ontimeout = onErr;
+  xhr.send(body && method !== 'GET' ? JSON.stringify(body) : null);
+}
 
-  document.getElementById('refreshBtn').addEventListener('click', loadList);
-
-  async function loadList() {
-    const secret = getSecret();
-    if (!secret) {
-      listContent.innerHTML = '<div class="list-empty">비밀키를 입력하고 새로고침을 눌러주세요 🔑</div>';
-      return;
-    }
-    listErrorBox.classList.remove('show');
-    listContent.innerHTML = '<div class="list-loading">⏳ 불러오는 중...</div>';
-    listCount.textContent = '불러오는 중...';
-
-    try {
-      const res = await fetch(`${WORKER_URL}/upload-list`, { headers: { 'X-Secret-Key': secret } });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: '오류가 발생했습니다.' }));
-        throw new Error(err.error || '목록 불러오기 실패');
-      }
-      const { files } = await res.json();
-
-      if (!files || files.length === 0) {
-        listContent.innerHTML = '<div class="list-empty">업로드된 파일이 없습니다 📭</div>';
-        listCount.textContent = '파일 없음';
-        return;
-      }
-
-      listCount.textContent = `총 ${files.length}개 파일`;
-
-      const grouped = {};
-      files.forEach(f => {
-        const date = f.key.split('/')[1] || '날짜 없음';
-        if (!grouped[date]) grouped[date] = [];
-        grouped[date].push(f);
-      });
-
-      const container = document.createElement('div');
-      container.className = 'list-items';
-      Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(date => {
-        const divider = document.createElement('div');
-        divider.className = 'date-divider';
-        divider.textContent = date;
-        container.appendChild(divider);
-        grouped[date].forEach(f => {
-          const filename = decodeURIComponent(f.key.split('/').pop());
-          const card = makeFcard({ name: filename, url: f.url, size: f.size, key: f.key });
-
-          // 삭제 버튼 추가 (목록 탭에서만)
-          const deleteBtn = document.createElement('button');
-          deleteBtn.className = 'delete-btn';
-          deleteBtn.textContent = '🗑 삭제';
-          deleteBtn.addEventListener('click', async () => {
-            if (!confirm(`"${filename}" 파일을 삭제할까요?`)) return;
-            deleteBtn.textContent = '삭제 중...';
-            deleteBtn.disabled = true;
-            try {
-              const res = await fetch(`${WORKER_URL}/upload-delete`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json', 'X-Secret-Key': getSecret() },
-                body: JSON.stringify({ key: f.key }),
-              });
-              if (!res.ok) throw new Error('삭제 실패');
-              card.remove();
-            } catch (e) {
-              alert('삭제 실패: ' + e.message);
-              deleteBtn.textContent = '🗑 삭제';
-              deleteBtn.disabled = false;
-            }
-          });
-          card.querySelector('.fcard-name').appendChild(deleteBtn);
-          container.appendChild(card);
-        });
-      });
-
-      listContent.innerHTML = '';
-      listContent.appendChild(container);
-    } catch (e) {
-      listErrorBox.textContent = '⚠️ ' + e.message;
-      listErrorBox.classList.add('show');
-      listContent.innerHTML = '';
-    }
-  }
-
-  // 페이지 로드 시 공유 파일 확인
-  loadSharedFiles();
+// ── 유틸 ──────────────────────────────────────────────────────────────────
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function domain(u) { try { return new URL(u).hostname; } catch(e) { return u; } }
+function toast(msg) {
+  var el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el); setTimeout(function() { el.remove(); }, 2700);
+}
 </script>
-
 </body>
 </html>
