@@ -546,7 +546,44 @@
     const openBtn = document.createElement('button');
     openBtn.className = 'open-btn';
     openBtn.textContent = '🔗 바로가기';
-    openBtn.addEventListener('click', () => window.open(url, '_blank'));
+
+    // txt 파일 내용 펼치기 영역
+    let textPreview = null;
+    let isExpanded = false;
+
+    openBtn.addEventListener('click', async () => {
+      if (!name.endsWith('.txt')) {
+        window.open(url, '_blank');
+        return;
+      }
+      // txt 파일이면 내용 토글
+      if (!textPreview) {
+        textPreview = document.createElement('div');
+        textPreview.style.cssText = `
+          background:#fff; border:1.5px solid var(--border);
+          border-radius:10px; padding:12px; font-size:12px;
+          color:var(--text); white-space:pre-wrap; word-break:break-all;
+          line-height:1.7; max-height:200px; overflow-y:auto;
+          margin-top:8px; display:none;
+        `;
+        textPreview.textContent = '⏳ 불러오는 중...';
+        card.appendChild(textPreview);
+      }
+      isExpanded = !isExpanded;
+      textPreview.style.display = isExpanded ? 'block' : 'none';
+      openBtn.textContent = isExpanded ? '🔼 접기' : '🔗 바로가기';
+
+      if (isExpanded && textPreview.textContent === '⏳ 불러오는 중...') {
+        try {
+          const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
+            headers: { 'X-Secret-Key': getSecret() }
+          });
+          textPreview.textContent = await res.text();
+        } catch(e) {
+          textPreview.textContent = '불러오기 실패: ' + e.message;
+        }
+      }
+    });
     btnGroup.appendChild(openBtn);
 
     // 다운로드 버튼
