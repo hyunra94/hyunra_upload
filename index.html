@@ -579,7 +579,34 @@
     const shareBtn = document.createElement('button');
     shareBtn.className = 'share-btn';
     shareBtn.textContent = '📤 공유·복사';
-    shareBtn.addEventListener('click', () => {
+    shareBtn.addEventListener('click', async () => {
+      const isTxt = name.endsWith('.txt');
+
+      // txt 파일이면 내용 가져오기
+      if (isTxt) {
+        shareBtn.textContent = '⏳ 불러오는 중...';
+        try {
+          const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
+            headers: { 'X-Secret-Key': getSecret() }
+          });
+          const text = await res.text();
+          if (navigator.share) {
+            navigator.share({ title: name, text }).catch(() => {});
+          } else {
+            navigator.clipboard.writeText(text).then(() => {
+              shareBtn.textContent = '✅ 복사됨!';
+              setTimeout(() => { shareBtn.textContent = '📤 공유·복사'; }, 2000);
+              return;
+            });
+          }
+        } catch(e) {
+          alert('불러오기 실패: ' + e.message);
+        }
+        shareBtn.textContent = '📤 공유·복사';
+        return;
+      }
+
+      // 일반 파일은 링크 공유
       if (navigator.share) {
         navigator.share({ title: name, text: `📁 ${name}`, url }).catch(() => {});
       } else {
