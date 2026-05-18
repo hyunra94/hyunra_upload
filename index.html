@@ -578,9 +578,33 @@
           const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
             headers: { 'X-Secret-Key': getSecret() }
           });
-          textPreview.textContent = await res.text();
+          const text = await res.text();
+          textPreview.textContent = text;
+
+          // 복사 버튼 추가
+          const previewWrap = document.createElement('div');
+          previewWrap.style.cssText = 'position:relative; margin-top:8px;';
+          const copyPreviewBtn = document.createElement('button');
+          copyPreviewBtn.style.cssText = `
+            position:absolute; top:8px; right:8px;
+            background:var(--pink); border:none; border-radius:6px;
+            color:#fff; font-size:11px; font-family:'Noto Sans KR',sans-serif;
+            padding:4px 8px; cursor:pointer;
+          `;
+          copyPreviewBtn.textContent = '복사';
+          copyPreviewBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(text).then(() => {
+              copyPreviewBtn.textContent = '✅';
+              setTimeout(() => { copyPreviewBtn.textContent = '복사'; }, 2000);
+            });
+          });
+          textPreview.style.margin = '0';
+          previewWrap.appendChild(textPreview);
+          previewWrap.appendChild(copyPreviewBtn);
+          card.appendChild(previewWrap);
         } catch(e) {
           textPreview.textContent = '불러오기 실패: ' + e.message;
+          card.appendChild(textPreview);
         }
       }
     });
