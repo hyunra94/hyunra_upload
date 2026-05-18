@@ -324,7 +324,7 @@
       <input type="file" id="fileInput" multiple />
       <div class="dropzone-icon">📂</div>
       <p>파일을 드래그하거나 클릭해서 선택</p>
-      <span>최대 5GB · 여러 파일 동시 업로드 가능</span>
+      <span>최대 5GB · 여러 파일 / 클립보드 붙여넣기(Ctrl+V) 가능</span>
     </div>
     <div class="file-list" id="fileList"></div>
     <div class="progress-wrap" id="progressWrap">
@@ -480,8 +480,7 @@
       });
 
       addFiles(files);
-      document.getElementById('shareNotice').classList.add('show');
-      setTimeout(() => document.getElementById('shareNotice').classList.remove('show'), 4000);
+      showNotice(`📤 공유된 파일 ${files.length}개가 자동으로 추가됐어요!`);
     } catch (e) {
       console.error('공유 파일 복원 실패:', e);
     }
@@ -737,6 +736,116 @@
   dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
   dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); });
   fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fileInput.value = ''; });
+
+  // ── 클립보드 붙여넣기 → 파일 첨부
+  document.addEventListener('paste', (e) => {
+    // 비밀키 입력창/텍스트 입력창에서는 원래 붙여넣기가 우선 작동해야 함
+    if (isEditableTarget(e.target)) return;
+
+    // 텍스트 모드에서는 textarea 붙여넣기 흐름을 방해하지 않음
+    if (document.getElementById('modeText').classList.contains('active')) return;
+
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    const pastedFiles = getFilesFromClipboard(clipboardData);
+
+    // 파일/이미지가 없고 일반 텍스트만 있는 경우 txt 파일로 첨부
+    if (pastedFiles.length === 0) {
+      const pastedText = clipboardData.getData('text/plain');
+      if (pastedText && pastedText.trim()) {
+        pastedFiles.push(createTextFileFromClipboard(pastedText));
+      }
+    }
+
+    if (pastedFiles.length === 0) return;
+
+    e.preventDefault();
+    setMode('file');
+    addFiles(pastedFiles);
+    showNotice(`📎 클립보드에서 ${pastedFiles.length}개 파일이 추가됐어요!`);
+  });
+
+  function isEditableTarget(target) {
+    if (!target) return false;
+    const tag = target.tagName ? target.tagName.toLowerCase() : '';
+    return target.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
+  }
+
+  function getFilesFromClipboard(clipboardData) {
+    const files = [];
+    const seen = new Set();
+    const items = [...(clipboardData.items || [])];
+
+    items.forEach((item, index) => {
+      if (item.kind !== 'file') return;
+      const file = item.getAsFile();
+      if (!file) return;
+      const key = `${file.name}|${file.size}|${file.type}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      files.push(normalizeClipboardFile(file, index));
+    });
+
+    // 일부 브라우저는 clipboardData.files에만 들어오는 경우가 있음
+    [...(clipboardData.files || [])].forEach((file, index) => {
+      const key = `${file.name}|${file.size}|${file.type}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      files.push(normalizeClipboardFile(file, index));
+    });
+
+    return files;
+  }
+
+  function normalizeClipboardFile(file, index) {
+    const type = file.type || 'application/octet-stream';
+    const ext = getExtensionFromMime(type) || getExtensionFromName(file.name) || 'bin';
+    const hasUsableName = file.name && !['image.png', 'blob'].includes(file.name.toLowerCase());
+    const safeName = hasUsableName ? file.name : `clipboard_${makeTimestamp()}${index ? '_' + (index + 1) : ''}.${ext}`;
+    return new File([file], safeName, { type, lastModified: Date.now() });
+  }
+
+  function createTextFileFromClipboard(text) {
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + text], { type: 'text/plain; charset=utf-8' });
+    return new File([blob], `clipboard_text_${makeTimestamp()}.txt`, { type: 'text/plain', lastModified: Date.now() });
+  }
+
+  function makeTimestamp() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+  }
+
+  function getExtensionFromName(name = '') {
+    const match = name.match(/\.([a-z0-9]{1,8})$/i);
+    return match ? match[1].toLowerCase() : '';
+  }
+
+  function getExtensionFromMime(type) {
+    const map = {
+      'image/png': 'png',
+      'image/jpeg': 'jpg',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'image/svg+xml': 'svg',
+      'text/plain': 'txt',
+      'application/pdf': 'pdf',
+      'application/zip': 'zip',
+      'video/mp4': 'mp4',
+      'audio/mpeg': 'mp3'
+    };
+    return map[type] || '';
+  }
+
+  function showNotice(message) {
+    const notice = document.getElementById('shareNotice');
+    notice.textContent = message;
+    notice.classList.add('show');
+    clearTimeout(showNotice.timer);
+    showNotice.timer = setTimeout(() => notice.classList.remove('show'), 3500);
+  }
 
   function addFiles(files) {
     files.forEach(f => { if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f); });
