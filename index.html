@@ -6,7 +6,7 @@
   <title>파일 업로드</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📁</text></svg>" />
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#f2a7b8" />
+  <meta name="theme-color" content="#f2a8c6" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="파일업로드" />
   <meta property="og:title" content="파일 업로드" />
@@ -16,361 +16,491 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #f7f3ef;
-      --surface: #ffffff;
-      --border: #e8ddd4;
-      --pink: #f2a7b8;
-      --pink-light: #fce8ed;
-      --pink-deep: #e07f96;
-      --green: #a8c5a0;
-      --green-light: #e8f5e5;
-      --text: #3a2e2e;
-      --text-sub: #8a7070;
-      --shadow: 0 4px 20px rgba(180,130,130,0.12);
-      --radius: 16px;
+      --bg: #f7f2ee;
+      --surface: rgba(255, 255, 255, 0.78);
+      --surface-strong: #ffffff;
+      --surface-soft: rgba(255, 255, 255, 0.52);
+      --border: rgba(67, 60, 82, 0.12);
+      --border-strong: rgba(67, 60, 82, 0.2);
+      --blue: #8cb7ff;
+      --blue-deep: #456ce8;
+      --pink: #f2a8c6;
+      --pink-light: #fff0f7;
+      --pink-deep: #c15b88;
+      --green: #91d5c2;
+      --green-light: #ecfbf6;
+      --cream: #fff8ef;
+      --lavender: #efeaff;
+      --text: #27212f;
+      --text-sub: #7d7489;
+      --danger: #d65a63;
+      --danger-bg: #fff2f2;
+      --shadow: 0 24px 70px rgba(59, 47, 80, 0.18);
+      --shadow-soft: 0 14px 34px rgba(78, 69, 94, 0.11);
+      --radius-xl: 32px;
+      --radius: 20px;
+      --radius-sm: 14px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { min-height: 100%; background: var(--bg); }
 
     body {
-      font-family: 'Noto Sans KR', sans-serif;
-      background: var(--bg);
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
       min-height: 100vh;
+      color: var(--text);
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 9% 14%, rgba(255, 196, 219, 0.76) 0 13%, transparent 28%),
+        radial-gradient(circle at 88% 10%, rgba(154, 197, 255, 0.72) 0 15%, transparent 30%),
+        radial-gradient(circle at 78% 78%, rgba(162, 226, 203, 0.58) 0 14%, transparent 30%),
+        linear-gradient(135deg, #fff9f2 0%, #f7eef5 42%, #eef5ff 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,.34) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.28) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.58), transparent 76%);
+      opacity: .65;
+    }
+
+    .page-shell {
+      width: min(640px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 24px 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
-      background-image:
-        radial-gradient(circle at 20% 20%, #fce8ed55 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, #e8f5e555 0%, transparent 50%);
+      position: relative;
+      z-index: 1;
     }
 
-    .card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      border: 1.5px solid var(--border);
+    .mac-window {
       width: 100%;
-      max-width: 520px;
+      border-radius: 30px;
       overflow: hidden;
+      background: rgba(255,255,255,.54);
+      border: 1px solid rgba(255,255,255,.78);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(24px);
     }
+
+    .window-toolbar {
+      height: 48px;
+      padding: 0 18px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,255,255,.42));
+      border-bottom: 1px solid rgba(67, 60, 82, 0.09);
+    }
+
+    .traffic-lights { display: flex; gap: 8px; align-items: center; }
+    .traffic-lights span {
+      width: 12px; height: 12px; border-radius: 50%; display: block;
+      box-shadow: inset 0 -1px 1px rgba(0,0,0,.12);
+    }
+    .traffic-lights span:nth-child(1) { background: #ff6b67; }
+    .traffic-lights span:nth-child(2) { background: #ffc94c; }
+    .traffic-lights span:nth-child(3) { background: #39d07f; }
+
+    .window-title {
+      justify-self: center;
+      min-width: 0; max-width: 270px; width: 100%;
+      padding: 7px 14px; border-radius: 999px; text-align: center;
+      font-size: 12px; color: #81778b;
+      background: rgba(255,255,255,.54); border: 1px solid rgba(255,255,255,.7);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .toolbar-pill {
+      padding: 7px 10px; border-radius: 999px;
+      background: rgba(255,248,239,.72); color: #9a7451;
+      font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+
+    .card { width: 100%; overflow: hidden; background: rgba(255,255,255,.58); }
 
     .card-header {
-      background: linear-gradient(135deg, var(--pink-light) 0%, var(--green-light) 100%);
-      padding: 24px 32px 16px;
-      border-bottom: 1.5px solid var(--border);
+      padding: 30px 34px 22px;
+      background:
+        radial-gradient(circle at 16% 20%, rgba(255,255,255,.88), transparent 34%),
+        linear-gradient(135deg, rgba(255,240,247,.92) 0%, rgba(236,245,255,.9) 58%, rgba(236,251,246,.86) 100%);
+      border-bottom: 1px solid var(--border);
     }
-    .card-header h1 { font-size: 20px; font-weight: 700; color: var(--text); }
-    .card-header p { font-size: 12px; color: var(--text-sub); margin-top: 3px; }
 
-    /* 공유로 열림 알림 */
+    .header-eyebrow {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 800; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--pink-deep); margin-bottom: 12px;
+    }
+    .header-eyebrow::before {
+      content: "";
+      width: 8px; height: 8px; border-radius: 50%; background: var(--pink);
+      box-shadow: 14px 0 0 var(--blue), 28px 0 0 var(--green);
+    }
+
+    .card-header h1 {
+      font-size: 28px; line-height: 1.16; letter-spacing: -0.04em;
+      color: var(--text); font-weight: 800;
+    }
+    .card-header p { font-size: 13px; color: var(--text-sub); margin-top: 8px; line-height: 1.58; }
+
+    .shortlink-wrap {
+      margin-top: 18px;
+      background: rgba(255,255,255,.68); border: 1px solid rgba(255,255,255,.8);
+      border-radius: 18px; padding: 12px 14px;
+      display: grid; grid-template-columns: auto 1fr auto;
+      align-items: center; gap: 10px;
+      box-shadow: 0 10px 24px rgba(77, 63, 91, .08);
+    }
+    .shortlink-label { font-size: 11px; color: var(--text-sub); white-space: nowrap; font-weight: 700; }
+    .shortlink-url {
+      min-width: 0; font-size: 13px; font-weight: 800; color: var(--blue-deep);
+      filter: blur(5px); cursor: pointer; user-select: none;
+      transition: filter .25s ease; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .shortlink-url.revealed { filter: none; }
+    .shortlink-hint { font-size: 11px; color: var(--text-sub); white-space: nowrap; }
+
     .share-notice {
-      display: none;
-      background: #e8f5e5;
-      border-bottom: 1.5px solid var(--green);
-      padding: 10px 32px;
-      font-size: 12px;
-      color: #3a6a3a;
-      align-items: center;
-      gap: 6px;
+      display: none; margin: 16px 34px 0;
+      background: rgba(236,251,246,.88); border: 1px solid rgba(145,213,194,.58);
+      border-radius: 16px; padding: 12px 14px; font-size: 13px; color: #407b69;
+      align-items: center; gap: 8px; box-shadow: var(--shadow-soft);
     }
     .share-notice.show { display: flex; }
 
     .key-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 14px 32px;
-      border-bottom: 1.5px solid var(--border);
-      background: #fdfbf9;
+      display: flex; align-items: center; gap: 10px;
+      padding: 18px 34px; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.5);
     }
-    .key-bar label { font-size: 13px; font-weight: 500; color: var(--text-sub); white-space: nowrap; }
+    .key-bar label { font-size: 13px; font-weight: 800; color: var(--text); white-space: nowrap; }
     .key-bar input {
-      flex: 1;
-      padding: 8px 12px;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      font-size: 13px;
-      font-family: 'Noto Sans KR', sans-serif;
-      color: var(--text);
-      background: #fff;
-      outline: none;
-      transition: border-color 0.2s;
+      flex: 1; min-width: 0; padding: 12px 14px;
+      border: 1px solid rgba(67,60,82,0.12); border-radius: 16px;
+      font-size: 13px; font-family: inherit; color: var(--text);
+      background: rgba(255,255,255,.74); outline: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+      transition: border-color .2s, box-shadow .2s, background .2s;
     }
-    .key-bar input:focus { border-color: var(--pink); }
+    .key-bar input:focus {
+      border-color: rgba(69,108,232,.42); background: #fff;
+      box-shadow: 0 0 0 4px rgba(140,183,255,.18);
+    }
 
-    .tabs { display: flex; border-bottom: 1.5px solid var(--border); }
+    .tabs {
+      display: flex; padding: 10px; gap: 8px;
+      border-bottom: 1px solid var(--border); background: rgba(255,255,255,.38);
+    }
     .tab-btn {
-      flex: 1;
-      padding: 12px;
-      border: none;
-      background: none;
-      font-size: 13px;
-      font-weight: 500;
-      font-family: 'Noto Sans KR', sans-serif;
-      color: var(--text-sub);
-      cursor: pointer;
-      border-bottom: 2.5px solid transparent;
-      transition: all 0.2s;
+      flex: 1; padding: 12px; border: 1px solid transparent; border-radius: 16px;
+      background: transparent; font-size: 13px; font-weight: 800; font-family: inherit;
+      color: var(--text-sub); cursor: pointer; transition: all .2s ease;
     }
+    .tab-btn:hover { background: rgba(255,255,255,.5); color: var(--text); }
     .tab-btn.active {
-      color: var(--pink-deep);
-      border-bottom-color: var(--pink-deep);
-      background: var(--pink-light);
+      color: var(--blue-deep); border-color: rgba(140,183,255,.34);
+      background: rgba(255,255,255,.78); box-shadow: 0 10px 22px rgba(75,96,150,.08);
     }
 
-    .tab-panel { display: none; padding: 24px 32px; }
+    .tab-panel { display: none; padding: 26px 34px 30px; }
     .tab-panel.active { display: flex; flex-direction: column; gap: 18px; }
+    #fileMode { display: flex; flex-direction: column; gap: 18px; }
 
-    .dropzone {
-      border: 2px dashed var(--pink);
-      border-radius: var(--radius);
-      padding: 32px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      background: #fff;
-      position: relative;
-    }
-    .dropzone:hover, .dropzone.drag-over { background: var(--pink-light); border-color: var(--pink-deep); }
-    .dropzone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-    .dropzone-icon { font-size: 32px; margin-bottom: 8px; }
-    .dropzone p { font-size: 14px; font-weight: 500; color: var(--text); }
-    .dropzone span { font-size: 12px; color: var(--text-sub); margin-top: 4px; display: block; }
-
-    .file-list { display: flex; flex-direction: column; gap: 7px; }
-    .file-item {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--pink-light); border-radius: 9px; padding: 9px 12px; font-size: 13px;
-    }
-    .file-item .file-name { flex: 1; color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .file-item .file-size { color: var(--text-sub); font-size: 12px; flex-shrink: 0; }
-    .file-item .remove-btn { background: none; border: none; cursor: pointer; color: var(--pink-deep); font-size: 15px; padding: 0; flex-shrink: 0; line-height: 1; }
-
-    .progress-wrap { display: none; }
-    .progress-wrap.show { display: block; }
-    .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-sub); margin-bottom: 6px; }
-    .progress-bar-bg { background: var(--border); border-radius: 100px; height: 8px; overflow: hidden; }
-    .progress-bar-fill { background: linear-gradient(90deg, var(--pink), var(--green)); height: 100%; border-radius: 100px; width: 0%; transition: width 0.3s ease; }
-
-    .upload-btn {
-      width: 100%; padding: 12px;
-      background: linear-gradient(135deg, var(--pink) 0%, var(--green) 100%);
-      border: none; border-radius: 12px; color: #fff;
-      font-size: 15px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif;
-      cursor: pointer; transition: opacity 0.2s, transform 0.1s;
-    }
-    .upload-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
-    .upload-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    .result-box { display: none; flex-direction: column; gap: 8px; }
-    .result-box.show { display: flex; }
-
-    .error-box { display: none; background: #fff0f0; border: 1.5px solid #f5b8b8; border-radius: 10px; padding: 11px 14px; font-size: 13px; color: #c0392b; }
-    .error-box.show { display: block; }
-
-    .fcard { background: var(--green-light); border: 1.5px solid var(--green); border-radius: 10px; padding: 11px 14px; }
-    .fcard-name {
-      font-size: 12px; color: var(--text-sub); margin-bottom: 5px;
-      display: flex; align-items: center; gap: 5px;
-    }
-    .fcard-name span:first-child {
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .fcard-meta { margin-left: auto; font-size: 11px; color: var(--text-sub); }
-    .fcard-row { display: flex; align-items: center; gap: 6px; }
-    .fcard-url-hidden { display: none; }
-    .btn-group { display: flex; gap: 6px; flex-shrink: 0; width: 100%; }
-    .copy-btn, .share-btn, .open-btn { border: none; border-radius: 7px; color: #fff; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; padding: 7px 8px; cursor: pointer; white-space: nowrap; transition: background 0.2s; flex: 1; text-align: center; }
-    .copy-btn { background: var(--pink); }
-    .copy-btn:hover { background: var(--pink-deep); }
-    .copy-btn.copied { background: var(--green); }
-    .share-btn { background: var(--green); }
-    .share-btn:hover { background: #7aaa72; }
-    .open-btn { background: #a0b4e0; }
-    .open-btn:hover { background: #7a96cc; }
-    .download-btn { background: var(--pink); }
-    .download-btn:hover { background: var(--pink-deep); }
-    .delete-btn { background: none; border: 1.5px solid #f5b8b8; border-radius: 7px; color: #c0392b; font-size: 11px; font-family: 'Noto Sans KR', sans-serif; padding: 5px 8px; cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
-    .delete-btn:hover { background: #fff0f0; }
-
-    .list-header { display: flex; align-items: center; justify-content: space-between; }
-    .list-header span { font-size: 13px; color: var(--text-sub); }
-    .refresh-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; color: var(--text-sub); cursor: pointer; transition: all 0.2s; }
-    .refresh-btn:hover { border-color: var(--pink); color: var(--pink-deep); }
-    .list-loading, .list-empty { text-align: center; padding: 32px; color: var(--text-sub); font-size: 13px; }
-    .list-items { display: flex; flex-direction: column; gap: 8px; }
-    .date-divider { font-size: 11px; font-weight: 700; color: var(--text-sub); letter-spacing: 0.5px; padding: 4px 0 2px; border-bottom: 1px solid var(--border); }
-    .expire-note { text-align: center; font-size: 11px; color: var(--text-sub); }
-
-    /* 단축 링크 */
-    .shortlink-wrap {
-      background: var(--pink-light);
-      border: 1.5px solid var(--pink);
-      border-radius: 12px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .shortlink-label { font-size: 12px; color: var(--text-sub); white-space: nowrap; }
-    .shortlink-url {
-      flex: 1;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--pink-deep);
-      filter: blur(5px);
-      cursor: pointer;
-      user-select: none;
-      transition: filter 0.3s;
-      text-decoration: none;
-    }
-    .shortlink-url.revealed {
-      filter: none;
-      cursor: pointer;
-    }
-    .shortlink-hint { font-size: 11px; color: var(--text-sub); white-space: nowrap; }
-
-    /* 파일/텍스트 토글 */
     .mode-toggle {
-      display: flex;
-      gap: 6px;
-      background: var(--pink-light);
-      border-radius: 10px;
-      padding: 4px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      background: rgba(255,255,255,.52); border: 1px solid rgba(255,255,255,.64);
+      border-radius: 18px; padding: 6px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
     }
     .mode-btn {
-      flex: 1;
-      padding: 7px;
-      border: none;
-      border-radius: 7px;
-      font-size: 12px;
-      font-weight: 500;
-      font-family: 'Noto Sans KR', sans-serif;
-      cursor: pointer;
-      background: none;
-      color: var(--text-sub);
-      transition: all 0.2s;
+      padding: 11px; border: none; border-radius: 14px;
+      font-size: 13px; font-weight: 800; font-family: inherit;
+      cursor: pointer; background: transparent; color: var(--text-sub); transition: all .2s ease;
     }
-    .mode-btn.active {
-      background: #fff;
-      color: var(--pink-deep);
-      box-shadow: 0 1px 4px rgba(180,130,130,0.15);
+    .mode-btn.active { background: #fff; color: var(--pink-deep); box-shadow: 0 10px 22px rgba(95,66,98,0.10); }
+
+    .dropzone {
+      border: 1.5px dashed rgba(69,108,232,.35); border-radius: 26px; padding: 38px 22px;
+      text-align: center; cursor: pointer; transition: all .22s ease;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.8), rgba(255,255,255,.54)),
+        radial-gradient(circle at 50% 0%, rgba(140,183,255,.16), transparent 42%);
+      position: relative; overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.52);
+    }
+    .dropzone::before {
+      content: ""; position: absolute; inset: 13px; border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.68); pointer-events: none;
+    }
+    .dropzone:hover, .dropzone.drag-over {
+      transform: translateY(-2px); border-color: rgba(193,91,136,.45);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,240,247,.72)),
+        radial-gradient(circle at 50% 0%, rgba(242,168,198,.2), transparent 44%);
+      box-shadow: 0 16px 32px rgba(93,76,104,.1);
+    }
+    .dropzone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; z-index: 2;
+    }
+    .dropzone-icon {
+      width: 74px; height: 74px; margin: 0 auto 16px; display: grid; place-items: center;
+      border-radius: 26px;
+      background: linear-gradient(135deg, #fff, rgba(255,255,255,.52)), linear-gradient(135deg, rgba(242,168,198,.25), rgba(140,183,255,.25));
+      box-shadow: 0 16px 26px rgba(74,83,119,.1); font-size: 34px; position: relative; z-index: 1;
+    }
+    .dropzone p { position: relative; z-index: 1; font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+    .dropzone span { position: relative; z-index: 1; font-size: 12px; color: var(--text-sub); margin-top: 7px; display: block; line-height: 1.55; }
+
+    .file-list, .list-items, .result-box { display: flex; flex-direction: column; gap: 10px; }
+
+    .file-item {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,.7); border: 1px solid rgba(67,60,82,0.08);
+      border-radius: 16px; padding: 12px 13px; font-size: 13px; box-shadow: var(--shadow-soft);
+    }
+    .file-item .file-name { flex: 1; color: var(--text); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item .file-size { color: var(--text-sub); font-size: 12px; flex-shrink: 0; }
+    .file-item .remove-btn {
+      width: 24px; height: 24px; border: none; border-radius: 50%; cursor: pointer;
+      color: var(--danger); background: var(--danger-bg); font-size: 13px; flex-shrink: 0; line-height: 1;
     }
 
-    /* 텍스트 입력 */
-    .text-input-wrap { display: none; flex-direction: column; gap: 10px; }
+    .progress-wrap {
+      display: none; padding: 14px; border-radius: 18px;
+      background: rgba(255,255,255,.62); border: 1px solid rgba(255,255,255,.7);
+    }
+    .progress-wrap.show { display: block; }
+    .progress-label { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--text-sub); margin-bottom: 8px; }
+    .progress-bar-bg { background: rgba(67,60,82,0.1); border-radius: 100px; height: 9px; overflow: hidden; }
+    .progress-bar-fill { background: linear-gradient(90deg, var(--pink), var(--blue), var(--green)); height: 100%; border-radius: 100px; width: 0%; transition: width .3s ease; }
+
+    .upload-btn {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #ff9ec5 0%, #8cb7ff 48%, #91d5c2 100%);
+      border: none; border-radius: 18px; color: #fff;
+      font-size: 15px; font-weight: 900; font-family: inherit; cursor: pointer;
+      box-shadow: 0 15px 30px rgba(94,107,190,.18);
+      transition: opacity .2s, transform .15s, box-shadow .2s;
+    }
+    .upload-btn:hover:not(:disabled) { opacity: .95; transform: translateY(-1px); box-shadow: 0 18px 36px rgba(94,107,190,.23); }
+    .upload-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+    .result-box { display: none; }
+    .result-box.show { display: flex; }
+
+    .error-box {
+      display: none; background: rgba(255,242,242,.92);
+      border: 1px solid rgba(214,90,99,.25); border-radius: 16px;
+      padding: 12px 14px; font-size: 13px; color: var(--danger); line-height: 1.55;
+    }
+    .error-box.show { display: block; }
+
+    .fcard {
+      background: rgba(255,255,255,.75); border: 1px solid rgba(67,60,82,0.1);
+      border-radius: 18px; padding: 13px; box-shadow: var(--shadow-soft);
+    }
+    .fcard-name { font-size: 12px; color: var(--text-sub); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .fcard-name span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--text); }
+    .fcard-meta { margin-left: auto; font-size: 11px; color: var(--text-sub); font-weight: 700; }
+    .fcard-row { display: flex; align-items: center; gap: 6px; }
+    .fcard-url-hidden { display: none; }
+
+    .btn-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; flex-shrink: 0; width: 100%; }
+    .copy-btn, .share-btn, .open-btn {
+      border: none; border-radius: 13px; color: #fff;
+      font-size: 11px; font-family: inherit; font-weight: 800;
+      padding: 9px 8px; cursor: pointer; white-space: nowrap;
+      transition: transform .15s, opacity .2s; flex: 1; text-align: center;
+    }
+    .copy-btn:hover, .share-btn:hover, .open-btn:hover { transform: translateY(-1px); opacity: .92; }
+    .copy-btn { background: #8cb7ff; }
+    .copy-btn.copied { background: var(--green); }
+    .share-btn { background: #91d5c2; }
+    .open-btn { background: #b8a9f6; }
+
+    .delete-btn {
+      background: var(--danger-bg); border: 1px solid rgba(214,90,99,.22);
+      border-radius: 999px; color: var(--danger);
+      font-size: 11px; font-family: inherit; font-weight: 800;
+      padding: 5px 9px; cursor: pointer; white-space: nowrap; transition: all .2s; flex-shrink: 0;
+    }
+    .delete-btn:hover { background: #ffe7e9; }
+
+    .list-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 14px 15px; border-radius: 18px;
+      background: rgba(255,255,255,.58); border: 1px solid rgba(255,255,255,.7);
+    }
+    .list-header span { font-size: 13px; color: var(--text-sub); font-weight: 800; }
+    .refresh-btn {
+      background: rgba(255,255,255,.86); border: 1px solid rgba(67,60,82,0.1);
+      border-radius: 999px; padding: 8px 12px; font-size: 12px;
+      font-family: inherit; font-weight: 800; color: var(--blue-deep); cursor: pointer; transition: all .2s;
+    }
+    .refresh-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+
+    .list-loading, .list-empty {
+      text-align: center; padding: 36px 18px; color: var(--text-sub); font-size: 13px;
+      border-radius: 20px; background: rgba(255,255,255,.48);
+      border: 1px dashed rgba(67,60,82,0.15); line-height: 1.65;
+    }
+
+    .date-divider {
+      font-size: 11px; font-weight: 900; color: var(--pink-deep);
+      letter-spacing: .08em; padding: 8px 2px 4px; text-transform: uppercase;
+      border-bottom: 1px solid rgba(67,60,82,0.09);
+    }
+
+    .expire-note { text-align: center; font-size: 11px; color: var(--text-sub); line-height: 1.6; }
+
+    .text-input-wrap { display: none; flex-direction: column; gap: 12px; }
     .text-input-wrap.show { display: flex; }
     .text-area {
-      width: 100%;
-      min-height: 160px;
-      padding: 12px;
-      border: 1.5px solid var(--border);
-      border-radius: 12px;
-      font-size: 13px;
-      font-family: 'Noto Sans KR', sans-serif;
-      color: var(--text);
-      background: #fff;
-      outline: none;
-      resize: vertical;
-      transition: border-color 0.2s;
-      line-height: 1.6;
+      width: 100%; min-height: 180px; padding: 15px;
+      border: 1px solid rgba(67,60,82,0.12); border-radius: 22px;
+      font-size: 13px; font-family: inherit; color: var(--text);
+      background: rgba(255,255,255,.74); outline: none; resize: vertical;
+      transition: border-color .2s, box-shadow .2s, background .2s; line-height: 1.7;
     }
-    .text-area:focus { border-color: var(--pink); }
+    .text-area:focus { border-color: rgba(193,91,136,.36); background: #fff; box-shadow: 0 0 0 4px rgba(242,168,198,.16); }
+
+    /* 데모 배지 */
+    .demo-badge {
+      display: none; align-items: center; justify-content: center; gap: 6px;
+      background: #fff8e1; border: 1.5px solid #ffe082; border-radius: 8px;
+      padding: 8px 14px; font-size: 12px; color: #8a6a00; font-weight: 500;
+    }
+    .demo-badge.show { display: flex; }
+
+    @media (max-width: 560px) {
+      .page-shell { padding: 14px; }
+      .mac-window { border-radius: 26px; }
+      .window-toolbar { grid-template-columns: auto 1fr; }
+      .toolbar-pill { display: none; }
+      .window-title { justify-self: end; max-width: 190px; }
+      .card-header, .key-bar, .tab-panel { padding-left: 20px; padding-right: 20px; }
+      .card-header h1 { font-size: 24px; }
+      .shortlink-wrap { grid-template-columns: 1fr; align-items: start; }
+      .key-bar { flex-direction: column; align-items: stretch; }
+      .tabs { padding: 8px; }
+      .tab-btn { font-size: 12px; }
+      .btn-group { grid-template-columns: 1fr; }
+      .list-header { align-items: stretch; flex-direction: column; }
+    }
   </style>
 </head>
 <body>
 
-<div class="card">
-
-  <div class="card-header">
-    <h1>📁 파일 업로드</h1>
-    <p>비밀키 입력 후 파일을 올리거나 목록을 확인하세요 · 7일 후 자동 삭제</p>
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px;">
-      <span class="shortlink-url" id="shortlink" onclick="revealLink()" style="font-size:12px;">https://bit.ly/gusfkdid</span>
-      <span class="shortlink-hint" id="shortlinkHint" style="font-size:11px; color:var(--text-sub);">탭하면 공개</span>
-    </div>
-  </div>
-
-  <!-- 공유로 열림 알림 -->
-  <div class="share-notice" id="shareNotice">
-    📤 갤러리에서 공유된 파일이 자동으로 추가됐어요!
-  </div>
-
-  <div class="key-bar">
-    <label>🔑 비밀키</label>
-    <input type="password" id="secretKey" placeholder="비밀키를 입력하세요" />
-  </div>
-
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="upload">⬆️ 업로드</button>
-    <button class="tab-btn" data-tab="list">📋 내 파일 목록</button>
-  </div>
-
-  <div class="tab-panel active" id="tab-upload">
-
-    <!-- 파일/텍스트 토글 -->
-    <div class="mode-toggle">
-      <button class="mode-btn active" id="modeFile" onclick="setMode('file')">📁 파일</button>
-      <button class="mode-btn" id="modeText" onclick="setMode('text')">📝 텍스트</button>
-    </div>
-
-    <!-- 파일 업로드 영역 -->
-    <div id="fileMode">
-      <div class="dropzone" id="dropzone">
-      <input type="file" id="fileInput" multiple />
-      <div class="dropzone-icon">📂</div>
-      <p>파일을 드래그하거나 클릭해서 선택</p>
-      <span>최대 5GB · 여러 파일 동시 업로드 가능</span>
-    </div>
-    <div class="file-list" id="fileList"></div>
-    <div class="progress-wrap" id="progressWrap">
-      <div class="progress-label">
-        <span id="progressText">업로드 중...</span>
-        <span id="progressPct">0%</span>
+<main class="page-shell">
+  <section class="mac-window" aria-label="파일 업로드 창">
+    <div class="window-toolbar">
+      <div class="traffic-lights" aria-hidden="true">
+        <span></span><span></span><span></span>
       </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="progressFill"></div>
+      <div class="window-title">cloud-drop/upload</div>
+      <div class="toolbar-pill">7일 보관</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="header-eyebrow">PRIVATE SHARE</div>
+        <h1>파일 업로드</h1>
+        <p>비밀키 입력 후 파일을 올리거나 목록을 확인하세요. 업로드된 파일은 7일 후 자동 삭제됩니다.</p>
+
+        <div class="shortlink-wrap">
+          <span class="shortlink-label">SHORT LINK</span>
+          <span class="shortlink-url" id="shortlink" onclick="revealLink()">https://bit.ly/gusfkdid</span>
+          <span class="shortlink-hint" id="shortlinkHint">탭하면 공개</span>
+        </div>
+      </div>
+
+      <div class="share-notice" id="shareNotice">
+        📤 갤러리에서 공유된 파일이 자동으로 추가됐어요!
+      </div>
+
+      <div class="key-bar">
+        <label for="secretKey">비밀키</label>
+        <input type="password" id="secretKey" placeholder="비밀키를 입력하세요" />
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="upload">⬆️ 업로드</button>
+        <button class="tab-btn" data-tab="list">📋 내 파일 목록</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-upload">
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="modeFile" onclick="setMode('file')">📁 파일</button>
+          <button class="mode-btn" id="modeText" onclick="setMode('text')">📝 텍스트</button>
+        </div>
+
+        <div id="fileMode">
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" multiple />
+            <div class="dropzone-icon">⇧</div>
+            <p>파일을 드래그하거나 클릭해서 선택</p>
+            <span>최대 5GB · 여러 파일 동시 업로드 · Ctrl+V 붙여넣기 가능</span>
+          </div>
+          <div class="file-list" id="fileList"></div>
+          <div class="progress-wrap" id="progressWrap">
+            <div class="progress-label">
+              <span id="progressText">업로드 중...</span>
+              <span id="progressPct">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="progressFill"></div>
+            </div>
+          </div>
+          <div class="demo-badge" id="demoBadge">🧪 데모 모드 — 실제 업로드 없이 시뮬레이션만 실행됩니다</div>
+          <div class="error-box" id="errorBox"></div>
+          <div class="result-box" id="resultBox"></div>
+          <button class="upload-btn" id="uploadBtn" disabled>업로드</button>
+        </div>
+
+        <div class="text-input-wrap" id="textMode">
+          <textarea class="text-area" id="textInput" placeholder="전달할 내용을 붙여넣거나 입력하세요...&#10;코드, 긴 문장, 메모 등 무엇이든 가능해요!"></textarea>
+          <div class="error-box" id="textErrorBox"></div>
+          <div class="result-box" id="textResultBox"></div>
+          <button class="upload-btn" id="textSendBtn">전송</button>
+        </div>
+
+        <p class="expire-note">🗓 업로드된 파일은 7일 후 자동으로 삭제됩니다</p>
+      </div>
+
+      <div class="tab-panel" id="tab-list">
+        <div class="list-header">
+          <span id="listCount">R2에 저장된 파일 목록</span>
+          <button class="refresh-btn" id="refreshBtn">🔄 새로고침</button>
+        </div>
+        <div class="error-box" id="listErrorBox"></div>
+        <div id="listContent">
+          <div class="list-empty">비밀키를 입력하고 새로고침을 눌러주세요 🔑</div>
+        </div>
+        <p class="expire-note">🗓 업로드된 파일은 7일 후 자동으로 삭제됩니다</p>
       </div>
     </div>
-    <div class="error-box" id="errorBox"></div>
-    <div class="result-box" id="resultBox"></div>
-    <button class="upload-btn" id="uploadBtn" disabled>업로드</button>
-    </div><!-- end fileMode -->
-
-    <!-- 텍스트 입력 영역 -->
-    <div class="text-input-wrap" id="textMode">
-      <textarea class="text-area" id="textInput" placeholder="전달할 내용을 붙여넣거나 입력하세요...&#10;코드, 긴 문장, 메모 등 무엇이든 가능해요!"></textarea>
-      <div class="error-box" id="textErrorBox"></div>
-      <div class="result-box" id="textResultBox"></div>
-      <button class="upload-btn" id="textSendBtn">전송</button>
-    </div>
-
-    <p class="expire-note">🗓 업로드된 파일은 7일 후 자동으로 삭제됩니다</p>
-  </div>
-
-  <div class="tab-panel" id="tab-list">
-    <div class="list-header">
-      <span id="listCount">R2에 저장된 파일 목록</span>
-      <button class="refresh-btn" id="refreshBtn">🔄 새로고침</button>
-    </div>
-    <div class="error-box" id="listErrorBox"></div>
-    <div id="listContent">
-      <div class="list-empty">비밀키를 입력하고 새로고침을 눌러주세요 🔑</div>
-    </div>
-    <p class="expire-note">🗓 업로드된 파일은 7일 후 자동으로 삭제됩니다</p>
-  </div>
-
-</div>
+  </section>
+</main>
 
 <script>
   const WORKER_URL = 'https://file-upload.hyunra94.workers.dev';
+  const DEMO_KEY = 'test';
 
   const secretKeyInput = document.getElementById('secretKey');
+  const demoBadge = document.getElementById('demoBadge');
   const getSecret = () => secretKeyInput.value.trim();
+  const isDemo = () => getSecret() === DEMO_KEY;
 
   // ── 비밀키 저장/불러오기
   const SAVED_KEY = 'upload_secret';
@@ -378,6 +508,9 @@
   if (saved) secretKeyInput.value = saved;
   secretKeyInput.addEventListener('change', () => {
     if (secretKeyInput.value.trim()) localStorage.setItem(SAVED_KEY, secretKeyInput.value.trim());
+  });
+  secretKeyInput.addEventListener('input', () => {
+    demoBadge.classList.toggle('show', isDemo());
   });
 
   // ── 단축 링크 모자이크 해제
@@ -424,7 +557,6 @@
       const BOM = '\uFEFF';
       const blob = new Blob([BOM + text], { type: 'text/plain; charset=utf-8' });
       const file = new File([blob], filename, { type: 'text/plain' });
-
       const formData = new FormData();
       formData.append('file', file);
 
@@ -461,30 +593,22 @@
   async function loadSharedFiles() {
     const params = new URLSearchParams(location.search);
     if (!params.has('shared')) return;
-
-    // URL 파라미터 제거
     history.replaceState({}, '', '/');
-
     try {
       const cache = await caches.open('share-target-v1');
       const res = await cache.match('/shared-files');
       if (!res) return;
-
       const fileDataList = await res.json();
       await cache.delete('/shared-files');
-
       const files = fileDataList.map(f => {
         const uint8 = new Uint8Array(f.data);
         const blob = new Blob([uint8], { type: f.type });
         return new File([blob], f.name, { type: f.type });
       });
-
       addFiles(files);
       document.getElementById('shareNotice').classList.add('show');
       setTimeout(() => document.getElementById('shareNotice').classList.remove('show'), 4000);
-    } catch (e) {
-      console.error('공유 파일 복원 실패:', e);
-    }
+    } catch (e) { console.error('공유 파일 복원 실패:', e); }
   }
 
   // ── 탭 전환
@@ -498,13 +622,22 @@
     });
   });
 
-  // ── 공통 유틸
   function formatSize(bytes) {
     if (!bytes) return '';
     if (bytes < 1024) return bytes + 'B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
     if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + 'MB';
     return (bytes / 1024 / 1024 / 1024).toFixed(2) + 'GB';
+  }
+
+  async function makeAuthenticatedPreviewUrl(key) {
+    const secret = getSecret();
+    const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
+      headers: { 'X-Secret-Key': secret }
+    });
+    if (!res.ok) throw new Error('미리보기 파일을 불러오지 못했습니다.');
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
   }
 
   function makeFcard({ name, url, size, key }) {
@@ -521,33 +654,17 @@
     }
     const row = document.createElement('div');
     row.className = 'fcard-row';
-
-    // URL은 숨기고 버튼만 표시
     const linkEl = document.createElement('div');
     linkEl.className = 'fcard-url-hidden';
     linkEl.textContent = url;
 
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'copy-btn';
-    copyBtn.style.flex = '1';
-    copyBtn.textContent = '📋 링크복사';
-    copyBtn.addEventListener('click', () => {
-      navigator.clipboard.writeText(url).then(() => {
-        copyBtn.textContent = '✅ 복사됨!';
-        copyBtn.classList.add('copied');
-        setTimeout(() => { copyBtn.textContent = '📋 링크복사'; copyBtn.classList.remove('copied'); }, 2000);
-      });
-    });
-
     const btnGroup = document.createElement('div');
     btnGroup.className = 'btn-group';
 
-    // 바로가기 버튼
+    // 미리보기 버튼
     const openBtn = document.createElement('button');
     openBtn.className = 'open-btn';
     openBtn.textContent = '🖼️ 미리보기';
-
-    // txt 파일 내용 펼치기 영역
     let textPreview = null;
     let isExpanded = false;
 
@@ -557,18 +674,11 @@
       const isImage = ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
       const isPdf = ext === 'pdf';
 
-      if (!isText && !isImage && !isPdf) {
-        window.open(url, '_blank');
-        return;
-      }
+      if (!isText && !isImage && !isPdf) { window.open(url, '_blank'); return; }
 
-      // 미리보기 토글
       if (!textPreview) {
         textPreview = document.createElement('div');
-        textPreview.style.cssText = `
-          border:1.5px solid var(--border); border-radius:10px;
-          overflow:hidden; margin-top:8px; display:none; position:relative;
-        `;
+        textPreview.style.cssText = 'border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-top:8px;display:none;position:relative;';
         card.appendChild(textPreview);
       }
 
@@ -580,28 +690,25 @@
         textPreview.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--text-sub)">⏳ 불러오는 중...</div>';
         try {
           if (isImage) {
-            textPreview.innerHTML = `<img src="${url}" style="width:100%;display:block;border-radius:8px;" />`;
+            const previewUrl = await makeAuthenticatedPreviewUrl(key);
+            const img = document.createElement('img');
+            img.src = previewUrl;
+            img.style.cssText = 'width:100%;display:block;border-radius:8px;';
+            textPreview.innerHTML = '';
+            textPreview.appendChild(img);
           } else if (isPdf) {
-            textPreview.innerHTML = `<iframe src="${url}" style="width:100%;height:400px;border:none;"></iframe>`;
+            const previewUrl = await makeAuthenticatedPreviewUrl(key);
+            textPreview.innerHTML = `<iframe src="${previewUrl}" style="width:100%;height:400px;border:none;"></iframe>`;
           } else if (isText) {
             const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
               headers: { 'X-Secret-Key': getSecret() }
             });
             const text = await res.text();
             const pre = document.createElement('pre');
-            pre.style.cssText = `
-              background:#fff; padding:12px; font-size:12px;
-              color:var(--text); white-space:pre-wrap; word-break:break-all;
-              line-height:1.7; max-height:200px; overflow-y:auto; margin:0;
-            `;
+            pre.style.cssText = 'background:#fff;padding:12px;font-size:12px;color:var(--text);white-space:pre-wrap;word-break:break-all;line-height:1.7;max-height:200px;overflow-y:auto;margin:0;';
             pre.textContent = text;
             const copyBtn2 = document.createElement('button');
-            copyBtn2.style.cssText = `
-              position:absolute; top:8px; right:8px;
-              background:var(--pink); border:none; border-radius:6px;
-              color:#fff; font-size:11px; font-family:'Noto Sans KR',sans-serif;
-              padding:4px 8px; cursor:pointer;
-            `;
+            copyBtn2.style.cssText = 'position:absolute;top:8px;right:8px;background:var(--pink);border:none;border-radius:6px;color:#fff;font-size:11px;font-family:inherit;padding:4px 8px;cursor:pointer;';
             copyBtn2.textContent = '복사';
             copyBtn2.addEventListener('click', () => {
               navigator.clipboard.writeText(text).then(() => {
@@ -639,21 +746,17 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(a.href);
-      } catch(e) {
-        alert('다운로드 실패: ' + e.message);
-      }
+      } catch(e) { alert('다운로드 실패: ' + e.message); }
       dlBtn.textContent = '⬇️ 다운로드';
     });
     btnGroup.appendChild(dlBtn);
 
-    // 공유·복사 버튼 (공유 API 지원 시 공유 시트, 미지원 시 링크복사)
+    // 공유·복사 버튼
     const shareBtn = document.createElement('button');
     shareBtn.className = 'share-btn';
     shareBtn.textContent = '📤 공유·복사';
     shareBtn.addEventListener('click', async () => {
       const isTxt = name.endsWith('.txt');
-
-      // txt 파일이면 내용 가져오기
       if (isTxt) {
         shareBtn.textContent = '⏳ 불러오는 중...';
         try {
@@ -667,17 +770,12 @@
             navigator.clipboard.writeText(text).then(() => {
               shareBtn.textContent = '✅ 복사됨!';
               setTimeout(() => { shareBtn.textContent = '📤 공유·복사'; }, 2000);
-              return;
             });
           }
-        } catch(e) {
-          alert('불러오기 실패: ' + e.message);
-        }
+        } catch(e) { alert('불러오기 실패: ' + e.message); }
         shareBtn.textContent = '📤 공유·복사';
         return;
       }
-
-      // 일반 파일은 링크 공유
       if (navigator.share) {
         navigator.share({ title: name, text: `📁 ${name}`, url }).catch(() => {});
       } else {
@@ -707,13 +805,16 @@
   const progressPct = document.getElementById('progressPct');
   const resultBox = document.getElementById('resultBox');
   const errorBox = document.getElementById('errorBox');
-
   let selectedFiles = [];
 
   dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
   dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
   dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); });
   fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fileInput.value = ''; });
+  document.addEventListener('paste', e => {
+    const files = [...(e.clipboardData?.files || [])];
+    if (files.length > 0) addFiles(files);
+  });
 
   function addFiles(files) {
     files.forEach(f => { if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f); });
@@ -748,8 +849,28 @@
     resultBox.classList.remove('show');
     progressWrap.classList.add('show');
     uploadBtn.disabled = true;
-
     const results = [];
+
+    // 데모 모드
+    if (isDemo()) {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${file.name} 업로드 중...`;
+        setProgress(0);
+        await new Promise(r => setTimeout(r, 300));
+        for (let p = 10; p <= 100; p += 10) { setProgress(p); await new Promise(r => setTimeout(r, 120)); }
+        const today = new Date().toISOString().slice(0, 10);
+        results.push({ name: file.name, url: `https://example.r2.dev/uploads/${today}/${encodeURIComponent(file.name)}`, size: file.size, key: `uploads/main/${today}/${encodeURIComponent(file.name)}` });
+      }
+      progressText.textContent = '✅ 업로드 완료! (데모)';
+      setProgress(100);
+      results.forEach(r => resultBox.appendChild(makeFcard(r)));
+      resultBox.classList.add('show');
+      selectedFiles = [];
+      renderFileList();
+      setTimeout(() => progressWrap.classList.remove('show'), 1500);
+      return;
+    }
 
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
@@ -758,10 +879,8 @@
       try {
         const formData = new FormData();
         formData.append('file', file);
-
         await uploadWithProgress(file, formData, secret, pct => setProgress(pct));
-        const downloadUrl = lastDownloadUrl;
-        results.push({ name: file.name, url: downloadUrl, size: file.size, key: `uploads/${new Date().toISOString().slice(0,10)}/${encodeURIComponent(file.name)}` });
+        results.push({ name: file.name, url: lastDownloadUrl, size: file.size, key: lastKey });
         setProgress(100);
       } catch (e) {
         showError(`${file.name}: ${e.message}`);
@@ -781,6 +900,7 @@
   });
 
   let lastDownloadUrl = '';
+  let lastKey = '';
 
   function uploadWithProgress(file, formData, secret, onProgress) {
     return new Promise((resolve, reject) => {
@@ -790,9 +910,10 @@
       xhr.upload.addEventListener('progress', e => { if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100)); });
       xhr.addEventListener('load', () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          const res = JSON.parse(xhr.responseText);
-          lastDownloadUrl = res.downloadUrl;
-          resolve();
+          const res = JSON.parse(xhr.responseText || '{}');
+          lastDownloadUrl = res.downloadUrl || '';
+          lastKey = res.key || '';
+          resolve(res);
         } else {
           const err = JSON.parse(xhr.responseText || '{}');
           reject(new Error(err.error || 'HTTP ' + xhr.status));
@@ -812,10 +933,7 @@
 
   async function loadList() {
     const secret = getSecret();
-    if (!secret) {
-      listContent.innerHTML = '<div class="list-empty">비밀키를 입력하고 새로고침을 눌러주세요 🔑</div>';
-      return;
-    }
+    if (!secret) { listContent.innerHTML = '<div class="list-empty">비밀키를 입력하고 새로고침을 눌러주세요 🔑</div>'; return; }
     listErrorBox.classList.remove('show');
     listContent.innerHTML = '<div class="list-loading">⏳ 불러오는 중...</div>';
     listCount.textContent = '불러오는 중...';
@@ -835,11 +953,9 @@
       }
 
       listCount.textContent = `총 ${files.length}개 파일`;
-
       const grouped = {};
       files.forEach(f => {
         const parts = f.key.split('/');
-        // uploads/main|temp/날짜/파일명 또는 uploads/날짜/파일명
         const date = parts.length >= 4 ? parts[2] : parts[1] || '날짜 없음';
         if (!grouped[date]) grouped[date] = [];
         grouped[date].push(f);
@@ -855,8 +971,6 @@
         grouped[date].forEach(f => {
           const filename = decodeURIComponent(f.key.split('/').pop());
           const card = makeFcard({ name: filename, url: f.url, size: f.size, key: f.key });
-
-          // 삭제 버튼 추가 (목록 탭에서만)
           const deleteBtn = document.createElement('button');
           deleteBtn.className = 'delete-btn';
           deleteBtn.textContent = '🗑 삭제';
@@ -892,7 +1006,6 @@
     }
   }
 
-  // 페이지 로드 시 공유 파일 확인
   loadSharedFiles();
 </script>
 
