@@ -1,46 +1,1013 @@
-const CACHE_NAME = 'share-target-v1';
-
-// 공유된 파일을 캐시에 저장하고 메인 페이지로 리다이렉트
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-
-  if (url.pathname.endsWith('/share-target') && event.request.method === 'POST') {
-    event.respondWith(handleShareTarget(event.request));
-    return;
-  }
-});
-
-async function handleShareTarget(request) {
-  try {
-    const formData = await request.formData();
-    const files = formData.getAll('file');
-
-    if (files.length > 0) {
-      // 파일 데이터를 캐시에 저장
-      const fileDataList = await Promise.all(
-        files.map(async file => {
-          const buffer = await file.arrayBuffer();
-          return {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            data: Array.from(new Uint8Array(buffer)),
-          };
-        })
-      );
-
-      const cache = await caches.open(CACHE_NAME);
-      await cache.put(
-        '/shared-files',
-        new Response(JSON.stringify(fileDataList), {
-          headers: { 'Content-Type': 'application/json' },
-        })
-      );
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>파일 업로드</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📁</text></svg>" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#f2a8c6" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="파일업로드" />
+  <meta property="og:title" content="파일 업로드" />
+  <meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png" />
+  <meta property="og:url" content="https://hyunraupload.pages.dev/" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f7f2ee;
+      --surface: rgba(255, 255, 255, 0.78);
+      --surface-strong: #ffffff;
+      --surface-soft: rgba(255, 255, 255, 0.52);
+      --border: rgba(67, 60, 82, 0.12);
+      --border-strong: rgba(67, 60, 82, 0.2);
+      --blue: #8cb7ff;
+      --blue-deep: #456ce8;
+      --pink: #f2a8c6;
+      --pink-light: #fff0f7;
+      --pink-deep: #c15b88;
+      --green: #91d5c2;
+      --green-light: #ecfbf6;
+      --cream: #fff8ef;
+      --lavender: #efeaff;
+      --text: #27212f;
+      --text-sub: #7d7489;
+      --danger: #d65a63;
+      --danger-bg: #fff2f2;
+      --shadow: 0 24px 70px rgba(59, 47, 80, 0.18);
+      --shadow-soft: 0 14px 34px rgba(78, 69, 94, 0.11);
+      --radius-xl: 32px;
+      --radius: 20px;
+      --radius-sm: 14px;
     }
-  } catch (e) {
-    console.error('Share target error:', e);
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { min-height: 100%; background: var(--bg); }
+
+    body {
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      color: var(--text);
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 9% 14%, rgba(255, 196, 219, 0.76) 0 13%, transparent 28%),
+        radial-gradient(circle at 88% 10%, rgba(154, 197, 255, 0.72) 0 15%, transparent 30%),
+        radial-gradient(circle at 78% 78%, rgba(162, 226, 203, 0.58) 0 14%, transparent 30%),
+        linear-gradient(135deg, #fff9f2 0%, #f7eef5 42%, #eef5ff 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,.34) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.28) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.58), transparent 76%);
+      opacity: .65;
+    }
+
+    .page-shell {
+      width: min(640px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 24px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .mac-window {
+      width: 100%;
+      border-radius: 30px;
+      overflow: hidden;
+      background: rgba(255,255,255,.54);
+      border: 1px solid rgba(255,255,255,.78);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(24px);
+    }
+
+    .window-toolbar {
+      height: 48px;
+      padding: 0 18px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,255,255,.42));
+      border-bottom: 1px solid rgba(67, 60, 82, 0.09);
+    }
+
+    .traffic-lights { display: flex; gap: 8px; align-items: center; }
+    .traffic-lights span {
+      width: 12px; height: 12px; border-radius: 50%; display: block;
+      box-shadow: inset 0 -1px 1px rgba(0,0,0,.12);
+    }
+    .traffic-lights span:nth-child(1) { background: #ff6b67; }
+    .traffic-lights span:nth-child(2) { background: #ffc94c; }
+    .traffic-lights span:nth-child(3) { background: #39d07f; }
+
+    .window-title {
+      justify-self: center;
+      min-width: 0; max-width: 270px; width: 100%;
+      padding: 7px 14px; border-radius: 999px; text-align: center;
+      font-size: 12px; color: #81778b;
+      background: rgba(255,255,255,.54); border: 1px solid rgba(255,255,255,.7);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .toolbar-pill {
+      padding: 7px 10px; border-radius: 999px;
+      background: rgba(255,248,239,.72); color: #9a7451;
+      font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+
+    .card { width: 100%; overflow: hidden; background: rgba(255,255,255,.58); }
+
+    .card-header {
+      padding: 30px 34px 22px;
+      background:
+        radial-gradient(circle at 16% 20%, rgba(255,255,255,.88), transparent 34%),
+        linear-gradient(135deg, rgba(255,240,247,.92) 0%, rgba(236,245,255,.9) 58%, rgba(236,251,246,.86) 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-eyebrow {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 800; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--pink-deep); margin-bottom: 12px;
+    }
+    .header-eyebrow::before {
+      content: "";
+      width: 8px; height: 8px; border-radius: 50%; background: var(--pink);
+      box-shadow: 14px 0 0 var(--blue), 28px 0 0 var(--green);
+    }
+
+    .card-header h1 {
+      font-size: 28px; line-height: 1.16; letter-spacing: -0.04em;
+      color: var(--text); font-weight: 800;
+    }
+    .card-header p { font-size: 13px; color: var(--text-sub); margin-top: 8px; line-height: 1.58; }
+
+    .shortlink-wrap {
+      margin-top: 18px;
+      background: rgba(255,255,255,.68); border: 1px solid rgba(255,255,255,.8);
+      border-radius: 18px; padding: 12px 14px;
+      display: grid; grid-template-columns: auto 1fr auto;
+      align-items: center; gap: 10px;
+      box-shadow: 0 10px 24px rgba(77, 63, 91, .08);
+    }
+    .shortlink-label { font-size: 11px; color: var(--text-sub); white-space: nowrap; font-weight: 700; }
+    .shortlink-url {
+      min-width: 0; font-size: 13px; font-weight: 800; color: var(--blue-deep);
+      filter: blur(5px); cursor: pointer; user-select: none;
+      transition: filter .25s ease; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .shortlink-url.revealed { filter: none; }
+    .shortlink-hint { font-size: 11px; color: var(--text-sub); white-space: nowrap; }
+
+    .share-notice {
+      display: none; margin: 16px 34px 0;
+      background: rgba(236,251,246,.88); border: 1px solid rgba(145,213,194,.58);
+      border-radius: 16px; padding: 12px 14px; font-size: 13px; color: #407b69;
+      align-items: center; gap: 8px; box-shadow: var(--shadow-soft);
+    }
+    .share-notice.show { display: flex; }
+
+    .key-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 18px 34px; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.5);
+    }
+    .key-bar label { font-size: 13px; font-weight: 800; color: var(--text); white-space: nowrap; }
+    .key-bar input {
+      flex: 1; min-width: 0; padding: 12px 14px;
+      border: 1px solid rgba(67,60,82,0.12); border-radius: 16px;
+      font-size: 13px; font-family: inherit; color: var(--text);
+      background: rgba(255,255,255,.74); outline: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+      transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+    .key-bar input:focus {
+      border-color: rgba(69,108,232,.42); background: #fff;
+      box-shadow: 0 0 0 4px rgba(140,183,255,.18);
+    }
+
+    .tabs {
+      display: flex; padding: 10px; gap: 8px;
+      border-bottom: 1px solid var(--border); background: rgba(255,255,255,.38);
+    }
+    .tab-btn {
+      flex: 1; padding: 12px; border: 1px solid transparent; border-radius: 16px;
+      background: transparent; font-size: 13px; font-weight: 800; font-family: inherit;
+      color: var(--text-sub); cursor: pointer; transition: all .2s ease;
+    }
+    .tab-btn:hover { background: rgba(255,255,255,.5); color: var(--text); }
+    .tab-btn.active {
+      color: var(--blue-deep); border-color: rgba(140,183,255,.34);
+      background: rgba(255,255,255,.78); box-shadow: 0 10px 22px rgba(75,96,150,.08);
+    }
+
+    .tab-panel { display: none; padding: 26px 34px 30px; }
+    .tab-panel.active { display: flex; flex-direction: column; gap: 18px; }
+    #fileMode { display: flex; flex-direction: column; gap: 18px; }
+
+    .mode-toggle {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      background: rgba(255,255,255,.52); border: 1px solid rgba(255,255,255,.64);
+      border-radius: 18px; padding: 6px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+    }
+    .mode-btn {
+      padding: 11px; border: none; border-radius: 14px;
+      font-size: 13px; font-weight: 800; font-family: inherit;
+      cursor: pointer; background: transparent; color: var(--text-sub); transition: all .2s ease;
+    }
+    .mode-btn.active { background: #fff; color: var(--pink-deep); box-shadow: 0 10px 22px rgba(95,66,98,0.10); }
+
+    .dropzone {
+      border: 1.5px dashed rgba(69,108,232,.35); border-radius: 26px; padding: 38px 22px;
+      text-align: center; cursor: pointer; transition: all .22s ease;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.8), rgba(255,255,255,.54)),
+        radial-gradient(circle at 50% 0%, rgba(140,183,255,.16), transparent 42%);
+      position: relative; overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.52);
+    }
+    .dropzone::before {
+      content: ""; position: absolute; inset: 13px; border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.68); pointer-events: none;
+    }
+    .dropzone:hover, .dropzone.drag-over {
+      transform: translateY(-2px); border-color: rgba(193,91,136,.45);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,240,247,.72)),
+        radial-gradient(circle at 50% 0%, rgba(242,168,198,.2), transparent 44%);
+      box-shadow: 0 16px 32px rgba(93,76,104,.1);
+    }
+    .dropzone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; z-index: 2;
+    }
+    .dropzone-icon {
+      width: 74px; height: 74px; margin: 0 auto 16px; display: grid; place-items: center;
+      border-radius: 26px;
+      background: linear-gradient(135deg, #fff, rgba(255,255,255,.52)), linear-gradient(135deg, rgba(242,168,198,.25), rgba(140,183,255,.25));
+      box-shadow: 0 16px 26px rgba(74,83,119,.1); font-size: 34px; position: relative; z-index: 1;
+    }
+    .dropzone p { position: relative; z-index: 1; font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+    .dropzone span { position: relative; z-index: 1; font-size: 12px; color: var(--text-sub); margin-top: 7px; display: block; line-height: 1.55; }
+
+    .file-list, .list-items, .result-box { display: flex; flex-direction: column; gap: 10px; }
+
+    .file-item {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,.7); border: 1px solid rgba(67,60,82,0.08);
+      border-radius: 16px; padding: 12px 13px; font-size: 13px; box-shadow: var(--shadow-soft);
+    }
+    .file-item .file-name { flex: 1; color: var(--text); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item .file-size { color: var(--text-sub); font-size: 12px; flex-shrink: 0; }
+    .file-item .remove-btn {
+      width: 24px; height: 24px; border: none; border-radius: 50%; cursor: pointer;
+      color: var(--danger); background: var(--danger-bg); font-size: 13px; flex-shrink: 0; line-height: 1;
+    }
+
+    .progress-wrap {
+      display: none; padding: 14px; border-radius: 18px;
+      background: rgba(255,255,255,.62); border: 1px solid rgba(255,255,255,.7);
+    }
+    .progress-wrap.show { display: block; }
+    .progress-label { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--text-sub); margin-bottom: 8px; }
+    .progress-bar-bg { background: rgba(67,60,82,0.1); border-radius: 100px; height: 9px; overflow: hidden; }
+    .progress-bar-fill { background: linear-gradient(90deg, var(--pink), var(--blue), var(--green)); height: 100%; border-radius: 100px; width: 0%; transition: width .3s ease; }
+
+    .upload-btn {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #ff9ec5 0%, #8cb7ff 48%, #91d5c2 100%);
+      border: none; border-radius: 18px; color: #fff;
+      font-size: 15px; font-weight: 900; font-family: inherit; cursor: pointer;
+      box-shadow: 0 15px 30px rgba(94,107,190,.18);
+      transition: opacity .2s, transform .15s, box-shadow .2s;
+    }
+    .upload-btn:hover:not(:disabled) { opacity: .95; transform: translateY(-1px); box-shadow: 0 18px 36px rgba(94,107,190,.23); }
+    .upload-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+    .result-box { display: none; }
+    .result-box.show { display: flex; }
+
+    .error-box {
+      display: none; background: rgba(255,242,242,.92);
+      border: 1px solid rgba(214,90,99,.25); border-radius: 16px;
+      padding: 12px 14px; font-size: 13px; color: var(--danger); line-height: 1.55;
+    }
+    .error-box.show { display: block; }
+
+    .fcard {
+      background: rgba(255,255,255,.75); border: 1px solid rgba(67,60,82,0.1);
+      border-radius: 18px; padding: 13px; box-shadow: var(--shadow-soft);
+    }
+    .fcard-name { font-size: 12px; color: var(--text-sub); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .fcard-name span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--text); }
+    .fcard-meta { margin-left: auto; font-size: 11px; color: var(--text-sub); font-weight: 700; }
+    .fcard-row { display: flex; align-items: center; gap: 6px; }
+    .fcard-url-hidden { display: none; }
+
+    .btn-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; flex-shrink: 0; width: 100%; }
+    .copy-btn, .share-btn, .open-btn {
+      border: none; border-radius: 13px; color: #fff;
+      font-size: 11px; font-family: inherit; font-weight: 800;
+      padding: 9px 8px; cursor: pointer; white-space: nowrap;
+      transition: transform .15s, opacity .2s; flex: 1; text-align: center;
+    }
+    .copy-btn:hover, .share-btn:hover, .open-btn:hover { transform: translateY(-1px); opacity: .92; }
+    .copy-btn { background: #8cb7ff; }
+    .copy-btn.copied { background: var(--green); }
+    .share-btn { background: #91d5c2; }
+    .open-btn { background: #b8a9f6; }
+
+    .delete-btn {
+      background: var(--danger-bg); border: 1px solid rgba(214,90,99,.22);
+      border-radius: 999px; color: var(--danger);
+      font-size: 11px; font-family: inherit; font-weight: 800;
+      padding: 5px 9px; cursor: pointer; white-space: nowrap; transition: all .2s; flex-shrink: 0;
+    }
+    .delete-btn:hover { background: #ffe7e9; }
+
+    .list-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 14px 15px; border-radius: 18px;
+      background: rgba(255,255,255,.58); border: 1px solid rgba(255,255,255,.7);
+    }
+    .list-header span { font-size: 13px; color: var(--text-sub); font-weight: 800; }
+    .refresh-btn {
+      background: rgba(255,255,255,.86); border: 1px solid rgba(67,60,82,0.1);
+      border-radius: 999px; padding: 8px 12px; font-size: 12px;
+      font-family: inherit; font-weight: 800; color: var(--blue-deep); cursor: pointer; transition: all .2s;
+    }
+    .refresh-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+
+    .list-loading, .list-empty {
+      text-align: center; padding: 36px 18px; color: var(--text-sub); font-size: 13px;
+      border-radius: 20px; background: rgba(255,255,255,.48);
+      border: 1px dashed rgba(67,60,82,0.15); line-height: 1.65;
+    }
+
+    .date-divider {
+      font-size: 11px; font-weight: 900; color: var(--pink-deep);
+      letter-spacing: .08em; padding: 8px 2px 4px; text-transform: uppercase;
+      border-bottom: 1px solid rgba(67,60,82,0.09);
+    }
+
+    .expire-note { text-align: center; font-size: 11px; color: var(--text-sub); line-height: 1.6; }
+
+    .text-input-wrap { display: none; flex-direction: column; gap: 12px; }
+    .text-input-wrap.show { display: flex; }
+    .text-area {
+      width: 100%; min-height: 180px; padding: 15px;
+      border: 1px solid rgba(67,60,82,0.12); border-radius: 22px;
+      font-size: 13px; font-family: inherit; color: var(--text);
+      background: rgba(255,255,255,.74); outline: none; resize: vertical;
+      transition: border-color .2s, box-shadow .2s, background .2s; line-height: 1.7;
+    }
+    .text-area:focus { border-color: rgba(193,91,136,.36); background: #fff; box-shadow: 0 0 0 4px rgba(242,168,198,.16); }
+
+    /* 데모 배지 */
+    .demo-badge {
+      display: none; align-items: center; justify-content: center; gap: 6px;
+      background: #fff8e1; border: 1.5px solid #ffe082; border-radius: 8px;
+      padding: 8px 14px; font-size: 12px; color: #8a6a00; font-weight: 500;
+    }
+    .demo-badge.show { display: flex; }
+
+    @media (max-width: 560px) {
+      .page-shell { padding: 14px; }
+      .mac-window { border-radius: 26px; }
+      .window-toolbar { grid-template-columns: auto 1fr; }
+      .toolbar-pill { display: none; }
+      .window-title { justify-self: end; max-width: 190px; }
+      .card-header, .key-bar, .tab-panel { padding-left: 20px; padding-right: 20px; }
+      .card-header h1 { font-size: 24px; }
+      .shortlink-wrap { grid-template-columns: 1fr; align-items: start; }
+      .key-bar { flex-direction: column; align-items: stretch; }
+      .tabs { padding: 8px; }
+      .tab-btn { font-size: 12px; }
+      .btn-group { grid-template-columns: 1fr; }
+      .list-header { align-items: stretch; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<main class="page-shell">
+  <section class="mac-window" aria-label="파일 업로드 창">
+    <div class="window-toolbar">
+      <div class="traffic-lights" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="window-title">cloud-drop/upload</div>
+      <div class="toolbar-pill">7일 보관</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="header-eyebrow">PRIVATE SHARE</div>
+        <h1>파일 업로드</h1>
+        <p>비밀키 입력 후 파일을 올리거나 목록을 확인하세요. 업로드된 파일은 7일 후 자동 삭제됩니다.</p>
+
+        <div class="shortlink-wrap">
+          <span class="shortlink-label">SHORT LINK</span>
+          <span class="shortlink-url" id="shortlink" onclick="revealLink()">https://bit.ly/gusfkdid</span>
+          <span class="shortlink-hint" id="shortlinkHint">탭하면 공개</span>
+        </div>
+      </div>
+
+      <div class="share-notice" id="shareNotice">
+        📤 갤러리에서 공유된 파일이 자동으로 추가됐어요!
+      </div>
+
+      <div class="key-bar">
+        <label for="secretKey">비밀키</label>
+        <input type="password" id="secretKey" placeholder="비밀키를 입력하세요" />
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="upload">⬆️ 업로드</button>
+        <button class="tab-btn" data-tab="list">📋 내 파일 목록</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-upload">
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="modeFile" onclick="setMode('file')">📁 파일</button>
+          <button class="mode-btn" id="modeText" onclick="setMode('text')">📝 텍스트</button>
+        </div>
+
+        <div id="fileMode">
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" multiple />
+            <div class="dropzone-icon">⇧</div>
+            <p>파일을 드래그하거나 클릭해서 선택</p>
+            <span>최대 5GB · 여러 파일 동시 업로드 · Ctrl+V 붙여넣기 가능</span>
+          </div>
+          <div class="file-list" id="fileList"></div>
+          <div class="progress-wrap" id="progressWrap">
+            <div class="progress-label">
+              <span id="progressText">업로드 중...</span>
+              <span id="progressPct">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="progressFill"></div>
+            </div>
+          </div>
+          <div class="demo-badge" id="demoBadge">🧪 데모 모드 — 실제 업로드 없이 시뮬레이션만 실행됩니다</div>
+          <div class="error-box" id="errorBox"></div>
+          <div class="result-box" id="resultBox"></div>
+          <button class="upload-btn" id="uploadBtn" disabled>업로드</button>
+        </div>
+
+        <div class="text-input-wrap" id="textMode">
+          <textarea class="text-area" id="textInput" placeholder="전달할 내용을 붙여넣거나 입력하세요...&#10;코드, 긴 문장, 메모 등 무엇이든 가능해요!"></textarea>
+          <div class="error-box" id="textErrorBox"></div>
+          <div class="result-box" id="textResultBox"></div>
+          <button class="upload-btn" id="textSendBtn">전송</button>
+        </div>
+
+        <p class="expire-note">🗓 업로드된 파일은 7일 후 자동으로 삭제됩니다</p>
+      </div>
+
+      <div class="tab-panel" id="tab-list">
+        <div class="list-header">
+          <span id="listCount">R2에 저장된 파일 목록</span>
+          <button class="refresh-btn" id="refreshBtn">🔄 새로고침</button>
+        </div>
+        <div class="error-box" id="listErrorBox"></div>
+        <div id="listContent">
+          <div class="list-empty">비밀키를 입력하고 새로고침을 눌러주세요 🔑</div>
+        </div>
+        <p class="expire-note">🗓 업로드된 파일은 7일 후 자동으로 삭제됩니다</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const WORKER_URL = 'https://file-upload.hyunra94.workers.dev';
+  const DEMO_KEY = 'test';
+
+  const secretKeyInput = document.getElementById('secretKey');
+  const demoBadge = document.getElementById('demoBadge');
+  const getSecret = () => secretKeyInput.value.trim();
+  const isDemo = () => getSecret() === DEMO_KEY;
+
+  // ── 비밀키 저장/불러오기
+  const SAVED_KEY = 'upload_secret';
+  const saved = localStorage.getItem(SAVED_KEY);
+  if (saved) secretKeyInput.value = saved;
+  secretKeyInput.addEventListener('change', () => {
+    if (secretKeyInput.value.trim()) localStorage.setItem(SAVED_KEY, secretKeyInput.value.trim());
+  });
+  secretKeyInput.addEventListener('input', () => {
+    demoBadge.classList.toggle('show', isDemo());
+  });
+
+  // ── 단축 링크 모자이크 해제
+  function revealLink() {
+    document.getElementById('shortlink').classList.add('revealed');
+    document.getElementById('shortlinkHint').style.display = 'none';
   }
 
-  // 메인 페이지로 리다이렉트
-  return Response.redirect(new URL('./?shared=true', self.registration.scope).href, 303);
-}
+  // ── 파일/텍스트 모드 토글
+  function setMode(mode) {
+    const fileMode = document.getElementById('fileMode');
+    const textMode = document.getElementById('textMode');
+    document.getElementById('modeFile').classList.toggle('active', mode === 'file');
+    document.getElementById('modeText').classList.toggle('active', mode === 'text');
+    fileMode.style.display = mode === 'file' ? 'flex' : 'none';
+    fileMode.style.flexDirection = 'column';
+    fileMode.style.gap = '18px';
+    textMode.classList.toggle('show', mode === 'text');
+  }
+
+  // ── 텍스트 전송
+  document.getElementById('textSendBtn').addEventListener('click', async () => {
+    const secret = getSecret();
+    const text = document.getElementById('textInput').value.trim();
+    const textError = document.getElementById('textErrorBox');
+    const textResult = document.getElementById('textResultBox');
+
+    if (!secret) { textError.textContent = '⚠️ 비밀키를 입력해주세요.'; textError.classList.add('show'); return; }
+    if (!text) { textError.textContent = '⚠️ 내용을 입력해주세요.'; textError.classList.add('show'); return; }
+
+    textError.classList.remove('show');
+    textResult.innerHTML = '';
+    textResult.classList.remove('show');
+
+    const sendBtn = document.getElementById('textSendBtn');
+    sendBtn.disabled = true;
+    sendBtn.textContent = '전송 중...';
+
+    try {
+      const now = new Date();
+      const date = now.toISOString().slice(0, 10);
+      const time = now.toTimeString().slice(0, 8).replace(/:/g, '-');
+      const filename = `text_${date}_${time}.txt`;
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + text], { type: 'text/plain; charset=utf-8' });
+      const file = new File([blob], filename, { type: 'text/plain' });
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch(`${WORKER_URL}/upload-file`, {
+        method: 'POST',
+        headers: { 'X-Secret-Key': secret },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: '전송 실패' }));
+        throw new Error(err.error);
+      }
+
+      const { downloadUrl, key } = await res.json();
+      textResult.appendChild(makeFcard({ name: filename, url: downloadUrl, size: blob.size, key }));
+      textResult.classList.add('show');
+      document.getElementById('textInput').value = '';
+    } catch (e) {
+      textError.textContent = '⚠️ ' + e.message;
+      textError.classList.add('show');
+    }
+
+    sendBtn.disabled = false;
+    sendBtn.textContent = '전송';
+  });
+
+  // ── 서비스워커 등록
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(console.error);
+  }
+
+  // ── 공유로 열린 경우 파일 복원
+  async function loadSharedFiles() {
+    const params = new URLSearchParams(location.search);
+    if (!params.has('shared')) return;
+    history.replaceState({}, '', '/');
+    try {
+      const cache = await caches.open('share-target-v1');
+      const res = await cache.match('/shared-files');
+      if (!res) return;
+      const fileDataList = await res.json();
+      await cache.delete('/shared-files');
+      const files = fileDataList.map(f => {
+        const uint8 = new Uint8Array(f.data);
+        const blob = new Blob([uint8], { type: f.type });
+        return new File([blob], f.name, { type: f.type });
+      });
+      addFiles(files);
+      document.getElementById('shareNotice').classList.add('show');
+      setTimeout(() => document.getElementById('shareNotice').classList.remove('show'), 4000);
+    } catch (e) { console.error('공유 파일 복원 실패:', e); }
+  }
+
+  // ── 탭 전환
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'list') loadList();
+    });
+  });
+
+  function formatSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + 'B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + 'MB';
+    return (bytes / 1024 / 1024 / 1024).toFixed(2) + 'GB';
+  }
+
+  async function makeAuthenticatedPreviewUrl(key) {
+    const secret = getSecret();
+    const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
+      headers: { 'X-Secret-Key': secret }
+    });
+    if (!res.ok) throw new Error('미리보기 파일을 불러오지 못했습니다.');
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  }
+
+  function makeFcard({ name, url, size, key }) {
+    const card = document.createElement('div');
+    card.className = 'fcard';
+    const nameRow = document.createElement('div');
+    nameRow.className = 'fcard-name';
+    nameRow.innerHTML = `<span>📄 ${name}</span>`;
+    if (size) {
+      const meta = document.createElement('span');
+      meta.className = 'fcard-meta';
+      meta.textContent = formatSize(size);
+      nameRow.appendChild(meta);
+    }
+    const row = document.createElement('div');
+    row.className = 'fcard-row';
+    const linkEl = document.createElement('div');
+    linkEl.className = 'fcard-url-hidden';
+    linkEl.textContent = url;
+
+    const btnGroup = document.createElement('div');
+    btnGroup.className = 'btn-group';
+
+    // 미리보기 버튼
+    const openBtn = document.createElement('button');
+    openBtn.className = 'open-btn';
+    openBtn.textContent = '🖼️ 미리보기';
+    let textPreview = null;
+    let isExpanded = false;
+
+    openBtn.addEventListener('click', async () => {
+      const ext = name.split('.').pop().toLowerCase();
+      const isText = ext === 'txt';
+      const isImage = ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
+      const isPdf = ext === 'pdf';
+
+      if (!isText && !isImage && !isPdf) { window.open(url, '_blank'); return; }
+
+      if (!textPreview) {
+        textPreview = document.createElement('div');
+        textPreview.style.cssText = 'border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-top:8px;display:none;position:relative;';
+        card.appendChild(textPreview);
+      }
+
+      isExpanded = !isExpanded;
+      textPreview.style.display = isExpanded ? 'block' : 'none';
+      openBtn.textContent = isExpanded ? '🔼 접기' : '🖼️ 미리보기';
+
+      if (isExpanded && textPreview.innerHTML === '') {
+        textPreview.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--text-sub)">⏳ 불러오는 중...</div>';
+        try {
+          if (isImage) {
+            const previewUrl = await makeAuthenticatedPreviewUrl(key);
+            const img = document.createElement('img');
+            img.src = previewUrl;
+            img.style.cssText = 'width:100%;display:block;border-radius:8px;';
+            textPreview.innerHTML = '';
+            textPreview.appendChild(img);
+          } else if (isPdf) {
+            const previewUrl = await makeAuthenticatedPreviewUrl(key);
+            textPreview.innerHTML = `<iframe src="${previewUrl}" style="width:100%;height:400px;border:none;"></iframe>`;
+          } else if (isText) {
+            const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
+              headers: { 'X-Secret-Key': getSecret() }
+            });
+            const text = await res.text();
+            const pre = document.createElement('pre');
+            pre.style.cssText = 'background:#fff;padding:12px;font-size:12px;color:var(--text);white-space:pre-wrap;word-break:break-all;line-height:1.7;max-height:200px;overflow-y:auto;margin:0;';
+            pre.textContent = text;
+            const copyBtn2 = document.createElement('button');
+            copyBtn2.style.cssText = 'position:absolute;top:8px;right:8px;background:var(--pink);border:none;border-radius:6px;color:#fff;font-size:11px;font-family:inherit;padding:4px 8px;cursor:pointer;';
+            copyBtn2.textContent = '복사';
+            copyBtn2.addEventListener('click', () => {
+              navigator.clipboard.writeText(text).then(() => {
+                copyBtn2.textContent = '✅';
+                setTimeout(() => { copyBtn2.textContent = '복사'; }, 2000);
+              });
+            });
+            textPreview.innerHTML = '';
+            textPreview.appendChild(pre);
+            textPreview.appendChild(copyBtn2);
+          }
+        } catch(e) {
+          textPreview.innerHTML = `<div style="padding:12px;font-size:12px;color:#c0392b">불러오기 실패: ${e.message}</div>`;
+        }
+      }
+    });
+    btnGroup.appendChild(openBtn);
+
+    // 다운로드 버튼
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'copy-btn';
+    dlBtn.textContent = '⬇️ 다운로드';
+    dlBtn.addEventListener('click', async () => {
+      dlBtn.textContent = '⏳ 준비 중...';
+      try {
+        const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
+          headers: { 'X-Secret-Key': getSecret() }
+        });
+        if (!res.ok) throw new Error('다운로드 실패');
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      } catch(e) { alert('다운로드 실패: ' + e.message); }
+      dlBtn.textContent = '⬇️ 다운로드';
+    });
+    btnGroup.appendChild(dlBtn);
+
+    // 공유·복사 버튼
+    const shareBtn = document.createElement('button');
+    shareBtn.className = 'share-btn';
+    shareBtn.textContent = '📤 공유·복사';
+    shareBtn.addEventListener('click', async () => {
+      const isTxt = name.endsWith('.txt');
+      if (isTxt) {
+        shareBtn.textContent = '⏳ 불러오는 중...';
+        try {
+          const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(key)}`, {
+            headers: { 'X-Secret-Key': getSecret() }
+          });
+          const text = await res.text();
+          if (navigator.share) {
+            navigator.share({ title: name, text }).catch(() => {});
+          } else {
+            navigator.clipboard.writeText(text).then(() => {
+              shareBtn.textContent = '✅ 복사됨!';
+              setTimeout(() => { shareBtn.textContent = '📤 공유·복사'; }, 2000);
+            });
+          }
+        } catch(e) { alert('불러오기 실패: ' + e.message); }
+        shareBtn.textContent = '📤 공유·복사';
+        return;
+      }
+      if (navigator.share) {
+        navigator.share({ title: name, text: `📁 ${name}`, url }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(url).then(() => {
+          shareBtn.textContent = '✅ 복사됨!';
+          setTimeout(() => { shareBtn.textContent = '📤 공유·복사'; }, 2000);
+        });
+      }
+    });
+    btnGroup.appendChild(shareBtn);
+
+    row.appendChild(linkEl);
+    row.appendChild(btnGroup);
+    card.appendChild(nameRow);
+    card.appendChild(row);
+    return card;
+  }
+
+  // ── 업로드 탭
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileListEl = document.getElementById('fileList');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  const progressPct = document.getElementById('progressPct');
+  const resultBox = document.getElementById('resultBox');
+  const errorBox = document.getElementById('errorBox');
+  let selectedFiles = [];
+
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); });
+  fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fileInput.value = ''; });
+  document.addEventListener('paste', e => {
+    const files = [...(e.clipboardData?.files || [])];
+    if (files.length > 0) addFiles(files);
+  });
+
+  function addFiles(files) {
+    files.forEach(f => { if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f); });
+    renderFileList();
+  }
+
+  function renderFileList() {
+    fileListEl.innerHTML = '';
+    selectedFiles.forEach((f, i) => {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = `<span>📄</span><span class="file-name">${f.name}</span><span class="file-size">${formatSize(f.size)}</span><button class="remove-btn" data-i="${i}">✕</button>`;
+      fileListEl.appendChild(item);
+    });
+    fileListEl.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', () => { selectedFiles.splice(Number(btn.dataset.i), 1); renderFileList(); });
+    });
+    uploadBtn.disabled = selectedFiles.length === 0;
+  }
+
+  function showError(msg) { errorBox.textContent = '⚠️ ' + msg; errorBox.classList.add('show'); }
+  function hideError() { errorBox.classList.remove('show'); }
+  function setProgress(pct) { progressFill.style.width = pct + '%'; progressPct.textContent = pct + '%'; }
+
+  uploadBtn.addEventListener('click', async () => {
+    const secret = getSecret();
+    if (!secret) { showError('비밀키를 입력해주세요.'); return; }
+    if (!selectedFiles.length) { showError('파일을 선택해주세요.'); return; }
+
+    hideError();
+    resultBox.innerHTML = '';
+    resultBox.classList.remove('show');
+    progressWrap.classList.add('show');
+    uploadBtn.disabled = true;
+    const results = [];
+
+    // 데모 모드
+    if (isDemo()) {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${file.name} 업로드 중...`;
+        setProgress(0);
+        await new Promise(r => setTimeout(r, 300));
+        for (let p = 10; p <= 100; p += 10) { setProgress(p); await new Promise(r => setTimeout(r, 120)); }
+        const today = new Date().toISOString().slice(0, 10);
+        results.push({ name: file.name, url: `https://example.r2.dev/uploads/${today}/${encodeURIComponent(file.name)}`, size: file.size, key: `uploads/main/${today}/${encodeURIComponent(file.name)}` });
+      }
+      progressText.textContent = '✅ 업로드 완료! (데모)';
+      setProgress(100);
+      results.forEach(r => resultBox.appendChild(makeFcard(r)));
+      resultBox.classList.add('show');
+      selectedFiles = [];
+      renderFileList();
+      setTimeout(() => progressWrap.classList.remove('show'), 1500);
+      return;
+    }
+
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${file.name} 업로드 중...`;
+      setProgress(0);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        await uploadWithProgress(file, formData, secret, pct => setProgress(pct));
+        results.push({ name: file.name, url: lastDownloadUrl, size: file.size, key: lastKey });
+        setProgress(100);
+      } catch (e) {
+        showError(`${file.name}: ${e.message}`);
+        progressWrap.classList.remove('show');
+        uploadBtn.disabled = false;
+        return;
+      }
+    }
+
+    progressText.textContent = '✅ 모든 파일 업로드 완료!';
+    setProgress(100);
+    results.forEach(r => resultBox.appendChild(makeFcard(r)));
+    resultBox.classList.add('show');
+    selectedFiles = [];
+    renderFileList();
+    setTimeout(() => progressWrap.classList.remove('show'), 1500);
+  });
+
+  let lastDownloadUrl = '';
+  let lastKey = '';
+
+  function uploadWithProgress(file, formData, secret, onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${WORKER_URL}/upload-file`);
+      xhr.setRequestHeader('X-Secret-Key', secret);
+      xhr.upload.addEventListener('progress', e => { if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100)); });
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const res = JSON.parse(xhr.responseText || '{}');
+          lastDownloadUrl = res.downloadUrl || '';
+          lastKey = res.key || '';
+          resolve(res);
+        } else {
+          const err = JSON.parse(xhr.responseText || '{}');
+          reject(new Error(err.error || 'HTTP ' + xhr.status));
+        }
+      });
+      xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
+      xhr.send(formData);
+    });
+  }
+
+  // ── 파일 목록 탭
+  const listContent = document.getElementById('listContent');
+  const listCount = document.getElementById('listCount');
+  const listErrorBox = document.getElementById('listErrorBox');
+
+  document.getElementById('refreshBtn').addEventListener('click', loadList);
+
+  async function loadList() {
+    const secret = getSecret();
+    if (!secret) { listContent.innerHTML = '<div class="list-empty">비밀키를 입력하고 새로고침을 눌러주세요 🔑</div>'; return; }
+    listErrorBox.classList.remove('show');
+    listContent.innerHTML = '<div class="list-loading">⏳ 불러오는 중...</div>';
+    listCount.textContent = '불러오는 중...';
+
+    try {
+      const res = await fetch(`${WORKER_URL}/upload-list`, { headers: { 'X-Secret-Key': secret } });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: '오류가 발생했습니다.' }));
+        throw new Error(err.error || '목록 불러오기 실패');
+      }
+      const { files } = await res.json();
+
+      if (!files || files.length === 0) {
+        listContent.innerHTML = '<div class="list-empty">업로드된 파일이 없습니다 📭</div>';
+        listCount.textContent = '파일 없음';
+        return;
+      }
+
+      listCount.textContent = `총 ${files.length}개 파일`;
+      const grouped = {};
+      files.forEach(f => {
+        const parts = f.key.split('/');
+        const date = parts.length >= 4 ? parts[2] : parts[1] || '날짜 없음';
+        if (!grouped[date]) grouped[date] = [];
+        grouped[date].push(f);
+      });
+
+      const container = document.createElement('div');
+      container.className = 'list-items';
+      Object.keys(grouped).sort((a, b) => b.localeCompare(a)).forEach(date => {
+        const divider = document.createElement('div');
+        divider.className = 'date-divider';
+        divider.textContent = date;
+        container.appendChild(divider);
+        grouped[date].forEach(f => {
+          const filename = decodeURIComponent(f.key.split('/').pop());
+          const card = makeFcard({ name: filename, url: f.url, size: f.size, key: f.key });
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'delete-btn';
+          deleteBtn.textContent = '🗑 삭제';
+          deleteBtn.addEventListener('click', async () => {
+            if (!confirm(`"${filename}" 파일을 삭제할까요?`)) return;
+            deleteBtn.textContent = '삭제 중...';
+            deleteBtn.disabled = true;
+            try {
+              const res = await fetch(`${WORKER_URL}/upload-delete`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'X-Secret-Key': getSecret() },
+                body: JSON.stringify({ key: f.key }),
+              });
+              if (!res.ok) throw new Error('삭제 실패');
+              card.remove();
+            } catch (e) {
+              alert('삭제 실패: ' + e.message);
+              deleteBtn.textContent = '🗑 삭제';
+              deleteBtn.disabled = false;
+            }
+          });
+          card.querySelector('.fcard-name').appendChild(deleteBtn);
+          container.appendChild(card);
+        });
+      });
+
+      listContent.innerHTML = '';
+      listContent.appendChild(container);
+    } catch (e) {
+      listErrorBox.textContent = '⚠️ ' + e.message;
+      listErrorBox.classList.add('show');
+      listContent.innerHTML = '';
+    }
+  }
+
+  loadSharedFiles();
+</script>
+
+</body>
+</html>
