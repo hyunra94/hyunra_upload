@@ -143,8 +143,7 @@
       text-transform: uppercase; color: var(--pink-deep); margin-bottom: 12px;
     }
     .header-eyebrow::before {
-      content: "
-        ";
+      content: "";
       width: 8px; height: 8px; border-radius: 50%; background: var(--pink);
       box-shadow: 14px 0 0 var(--blue), 28px 0 0 var(--green);
     }
