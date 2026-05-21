@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>파일 업로드</title>
+  <title>📁 파일 업로드</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📁</text></svg>" />
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#f2a7b8" />
@@ -542,10 +542,10 @@
     const btnGroup = document.createElement('div');
     btnGroup.className = 'btn-group';
 
-    // 미리보기 버튼
+    // 바로가기 버튼
     const openBtn = document.createElement('button');
     openBtn.className = 'open-btn';
-    openBtn.textContent = '🖼️ 미리보기';
+    openBtn.textContent = '🔗 바로가기';
 
     // txt 파일 내용 펼치기 영역
     let textPreview = null;
@@ -574,7 +574,7 @@
 
       isExpanded = !isExpanded;
       textPreview.style.display = isExpanded ? 'block' : 'none';
-      openBtn.textContent = isExpanded ? '🔼 접기' : '🖼️ 미리보기';
+      openBtn.textContent = isExpanded ? '🔼 접기' : '🔗 바로가기';
 
       if (isExpanded && textPreview.innerHTML === '') {
         textPreview.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--text-sub)">⏳ 불러오는 중...</div>';
@@ -838,7 +838,9 @@
 
       const grouped = {};
       files.forEach(f => {
-        const date = f.key.split('/')[1] || '날짜 없음';
+        const parts = f.key.split('/');
+        // uploads/main|temp/날짜/파일명 또는 uploads/날짜/파일명
+        const date = parts.length >= 4 ? parts[2] : parts[1] || '날짜 없음';
         if (!grouped[date]) grouped[date] = [];
         grouped[date].push(f);
       });
