@@ -812,10 +812,53 @@
   dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
   dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); });
   fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fileInput.value = ''; });
-  document.addEventListener('paste', e => {
-    const files = [...(e.clipboardData?.files || [])];
-    if (files.length > 0) addFiles(files);
+ document.addEventListener('paste', e => {
+  const files = [...(e.clipboardData?.files || [])];
+
+  if (files.length > 0) {
+    e.preventDefault();
+    const renamedFiles = files.map((file, index) => renameClipboardFile(file, index));
+    addFiles(renamedFiles);
+  }
+});
+
+function renameClipboardFile(file, index) {
+  return new File([file], makeClipboardFileName(file, index), {
+    type: file.type || 'application/octet-stream',
+    lastModified: Date.now()
   });
+}
+
+function makeClipboardFileName(file, index) {
+  const ext = getClipboardFileExt(file);
+  const now = new Date();
+
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mi = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+
+  return `clipboard_${yyyy}${mm}${dd}_${hh}${mi}${ss}_${ms}_${index + 1}.${ext}`;
+}
+
+function getClipboardFileExt(file) {
+  if (file.name && file.name.includes('.')) {
+    return file.name.split('.').pop().toLowerCase();
+  }
+
+  const mimeMap = {
+    'image/png': 'png',
+    'image/jpeg': 'jpg',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'image/svg+xml': 'svg'
+  };
+
+  return mimeMap[file.type] || 'png';
+}
 
   function addFiles(files) {
     files.forEach(f => {
