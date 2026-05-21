@@ -817,7 +817,23 @@
   });
 
   function addFiles(files) {
-    files.forEach(f => { if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f); });
+    files.forEach(f => {
+      const isDup = selectedFiles.find(x => x.name === f.name && x.size === f.size);
+      if (isDup) return;
+      // 같은 이름이 이미 있으면 시간 추가
+      const nameExists = selectedFiles.find(x => x.name === f.name);
+      if (nameExists) {
+        const ts = new Date().toTimeString().slice(0,8).replace(/:/g,'-');
+        const dot = f.name.lastIndexOf('.');
+        const newName = dot > -1
+          ? `${f.name.slice(0, dot)}_${ts}${f.name.slice(dot)}`
+          : `${f.name}_${ts}`;
+        const renamed = new File([f], newName, { type: f.type });
+        selectedFiles.push(renamed);
+      } else {
+        selectedFiles.push(f);
+      }
+    });
     renderFileList();
   }
 
