@@ -183,6 +183,7 @@
       display: flex; align-items: center; gap: 10px;
       padding: 18px 34px; border-bottom: 1px solid var(--border);
       background: rgba(255,255,255,.5);
+      flex-wrap: nowrap;
     }
     .key-bar label { font-size: 13px; font-weight: 800; color: var(--text); white-space: nowrap; }
     .key-bar input {
@@ -392,7 +393,6 @@
       .card-header, .key-bar, .tab-panel { padding-left: 20px; padding-right: 20px; }
       .card-header h1 { font-size: 24px; }
       .shortlink-wrap { grid-template-columns: 1fr; align-items: start; }
-      .key-bar { flex-direction: column; align-items: stretch; }
       .tabs { padding: 8px; }
       .tab-btn { font-size: 12px; }
       .btn-group { grid-template-columns: 1fr; }
@@ -420,7 +420,7 @@
 
         <div class="shortlink-wrap">
           <span class="shortlink-label">SHORT LINK</span>
-          <span class="shortlink-url" id="shortlink" onclick="revealLink()">https://bit.ly/gusfk</span>
+          <span class="shortlink-url" id="shortlink" onclick="revealLink()">https://bit.ly/gusfkdid</span>
           <span class="shortlink-hint" id="shortlinkHint">탭하면 공개</span>
         </div>
       </div>
@@ -912,7 +912,7 @@
       try {
         const formData = new FormData();
         formData.append('file', file);
-        await uploadWithProgress(file, formData, secret, pct => setProgress(pct));
+        await uploadWithProgress(file, secret, pct => setProgress(pct));
         results.push({ name: file.name, url: lastDownloadUrl, size: file.size, key: lastKey });
         setProgress(100);
       } catch (e) {
@@ -935,25 +935,37 @@
   let lastDownloadUrl = '';
   let lastKey = '';
 
-  function uploadWithProgress(file, formData, secret, onProgress) {
+  async function uploadWithProgress(file, secret, onProgress) {
+    // 1. Worker에서 presigned URL 발급
+    const res = await fetch(
+      `${WORKER_URL}/get-upload-url?filename=${encodeURIComponent(file.name)}&type=${encodeURIComponent(file.type || 'application/octet-stream')}`,
+      { headers: { 'X-Secret-Key': secret } }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'URL 발급 실패' }));
+      throw new Error(err.error || 'URL 발급 실패');
+    }
+    const { uploadUrl, key, downloadUrl } = await res.json();
+    lastKey = key;
+    lastDownloadUrl = downloadUrl;
+
+    // 2. R2에 직접 업로드 (크기 제한 없음)
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${WORKER_URL}/upload-file`);
-      xhr.setRequestHeader('X-Secret-Key', secret);
-      xhr.upload.addEventListener('progress', e => { if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100)); });
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100));
+      });
       xhr.addEventListener('load', () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          const res = JSON.parse(xhr.responseText || '{}');
-          lastDownloadUrl = res.downloadUrl || '';
-          lastKey = res.key || '';
-          resolve(res);
+          resolve();
         } else {
-          const err = JSON.parse(xhr.responseText || '{}');
-          reject(new Error(err.error || 'HTTP ' + xhr.status));
+          reject(new Error(`업로드 실패 (HTTP ${xhr.status})`));
         }
       });
       xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
-      xhr.send(formData);
+      xhr.send(file);
     });
   }
 
