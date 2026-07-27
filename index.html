@@ -351,6 +351,31 @@
     }
     .refresh-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
 
+    .folder-select-btn {
+      display: block; margin: 10px auto 0; background: rgba(255,255,255,.86);
+      border: 1px solid rgba(67,60,82,0.1); border-radius: 999px; padding: 8px 14px;
+      font-size: 12px; font-family: inherit; font-weight: 800; color: var(--blue-deep);
+      cursor: pointer; transition: all .2s;
+    }
+    .folder-select-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+
+    .folder-group {
+      border: 1px dashed rgba(67,60,82,0.15); border-radius: 18px; padding: 10px; margin: 8px 0;
+      background: rgba(255,255,255,.4);
+    }
+    .folder-group-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 4px 4px 10px;
+    }
+    .folder-group-title { font-size: 12px; font-weight: 800; color: var(--text); }
+    .folder-dl-btn {
+      background: var(--pink); border: none; border-radius: 999px; color: #fff;
+      font-size: 11px; font-family: inherit; font-weight: 800; padding: 7px 11px;
+      cursor: pointer; white-space: nowrap; transition: all .2s;
+    }
+    .folder-dl-btn:hover { transform: translateY(-1px); opacity: .92; }
+    .folder-dl-btn:disabled { opacity: .5; cursor: not-allowed; }
+
     .list-loading, .list-empty {
       text-align: center; padding: 36px 18px; color: var(--text-sub); font-size: 13px;
       border-radius: 20px; background: rgba(255,255,255,.48);
@@ -420,7 +445,7 @@
 
         <div class="shortlink-wrap">
           <span class="shortlink-label">SHORT LINK</span>
-          <span class="shortlink-url" id="shortlink" onclick="revealLink()">https://bit.ly/gusfkdid</span>
+          <span class="shortlink-url" id="shortlink" onclick="revealLink()">https://bit.ly/gusfk</span>
           <span class="shortlink-hint" id="shortlinkHint">탭하면 공개</span>
         </div>
       </div>
@@ -453,9 +478,11 @@
           <div class="dropzone" id="dropzone">
             <input type="file" id="fileInput" multiple />
             <div class="dropzone-icon">⇧</div>
-            <p>파일을 드래그하거나 클릭해서 선택</p>
-            <span>최대 5GB · 여러 파일 동시 업로드 · Ctrl+V 붙여넣기 가능</span>
+            <p>파일이나 폴더를 드래그하거나 클릭해서 선택</p>
+            <span>최대 5GB · 여러 파일·폴더 동시 업로드 · Ctrl+V 붙여넣기 가능</span>
           </div>
+          <input type="file" id="folderInput" webkitdirectory multiple style="display:none" />
+          <button type="button" class="folder-select-btn" id="folderSelectBtn">📂 폴더 통째로 선택</button>
           <div class="file-list" id="fileList"></div>
           <div class="progress-wrap" id="progressWrap">
             <div class="progress-label">
@@ -497,6 +524,7 @@
   </section>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
   const WORKER_URL = 'https://file-upload.hyunra94.workers.dev';
   const DEMO_KEY = 'test';
@@ -822,33 +850,80 @@
   const progressPct = document.getElementById('progressPct');
   const resultBox = document.getElementById('resultBox');
   const errorBox = document.getElementById('errorBox');
-  let selectedFiles = [];
+  const folderInput = document.getElementById('folderInput');
+  const folderSelectBtn = document.getElementById('folderSelectBtn');
+  let selectedFiles = []; // { file, relPath }
 
   dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
   dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
-  dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); });
-  fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fileInput.value = ''; });
+  dropzone.addEventListener('drop', async e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    const items = e.dataTransfer.items;
+    if (items && items.length && items[0].webkitGetAsEntry) {
+      const entries = [...items].map(it => it.webkitGetAsEntry()).filter(Boolean);
+      const collected = [];
+      for (const entry of entries) await readEntry(entry, '', collected);
+      addFiles(collected);
+    } else {
+      addFiles([...e.dataTransfer.files].map(f => ({ file: f, relPath: f.name })));
+    }
+  });
+  fileInput.addEventListener('change', () => {
+    addFiles([...fileInput.files].map(f => ({ file: f, relPath: f.name })));
+    fileInput.value = '';
+  });
+  folderInput.addEventListener('change', () => {
+    addFiles([...folderInput.files].map(f => ({ file: f, relPath: f.webkitRelativePath || f.name })));
+    folderInput.value = '';
+  });
+  folderSelectBtn.addEventListener('click', () => folderInput.click());
   document.addEventListener('paste', e => {
     const files = [...(e.clipboardData?.files || [])];
-    if (files.length > 0) addFiles(files);
+    if (files.length > 0) addFiles(files.map(f => ({ file: f, relPath: f.name })));
   });
 
-  function addFiles(files) {
-    files.forEach(f => {
-      const isDup = selectedFiles.find(x => x.name === f.name && x.size === f.size);
-      if (isDup) return;
-      // 같은 이름이 이미 있으면 시간 추가
-      const nameExists = selectedFiles.find(x => x.name === f.name);
-      if (nameExists) {
-        const ts = new Date().toTimeString().slice(0,8).replace(/:/g,'-');
-        const dot = f.name.lastIndexOf('.');
-        const newName = dot > -1
-          ? `${f.name.slice(0, dot)}_${ts}${f.name.slice(dot)}`
-          : `${f.name}_${ts}`;
-        const renamed = new File([f], newName, { type: f.type });
-        selectedFiles.push(renamed);
+  // 드래그&드롭된 폴더를 재귀적으로 순회해 { file, relPath } 목록으로 변환
+  function readEntry(entry, prefix, out) {
+    return new Promise(resolve => {
+      if (entry.isFile) {
+        entry.file(file => { out.push({ file, relPath: prefix + file.name }); resolve(); }, () => resolve());
+      } else if (entry.isDirectory) {
+        const reader = entry.createReader();
+        const allEntries = [];
+        const readBatch = () => {
+          reader.readEntries(async batch => {
+            if (!batch.length) {
+              for (const child of allEntries) await readEntry(child, prefix + entry.name + '/', out);
+              resolve();
+            } else {
+              allEntries.push(...batch);
+              readBatch();
+            }
+          }, () => resolve());
+        };
+        readBatch();
       } else {
-        selectedFiles.push(f);
+        resolve();
+      }
+    });
+  }
+
+  function addFiles(items) {
+    items.forEach(({ file: f, relPath }) => {
+      const isDup = selectedFiles.find(x => x.relPath === relPath && x.file.size === f.size);
+      if (isDup) return;
+      // 같은 경로가 이미 있으면 시간 추가
+      const pathExists = selectedFiles.find(x => x.relPath === relPath);
+      if (pathExists) {
+        const ts = new Date().toTimeString().slice(0,8).replace(/:/g,'-');
+        const dot = relPath.lastIndexOf('.');
+        const newRelPath = dot > -1
+          ? `${relPath.slice(0, dot)}_${ts}${relPath.slice(dot)}`
+          : `${relPath}_${ts}`;
+        selectedFiles.push({ file: f, relPath: newRelPath });
+      } else {
+        selectedFiles.push({ file: f, relPath });
       }
     });
     renderFileList();
@@ -856,11 +931,12 @@
 
   function renderFileList() {
     fileListEl.innerHTML = '';
-    selectedFiles.forEach((f, i) => {
-      const item = document.createElement('div');
-      item.className = 'file-item';
-      item.innerHTML = `<span>📄</span><span class="file-name">${f.name}</span><span class="file-size">${formatSize(f.size)}</span><button class="remove-btn" data-i="${i}">✕</button>`;
-      fileListEl.appendChild(item);
+    selectedFiles.forEach((item, i) => {
+      const el = document.createElement('div');
+      el.className = 'file-item';
+      const icon = item.relPath.includes('/') ? '📁' : '📄';
+      el.innerHTML = `<span>${icon}</span><span class="file-name">${item.relPath}</span><span class="file-size">${formatSize(item.file.size)}</span><button class="remove-btn" data-i="${i}">✕</button>`;
+      fileListEl.appendChild(el);
     });
     fileListEl.querySelectorAll('.remove-btn').forEach(btn => {
       btn.addEventListener('click', () => { selectedFiles.splice(Number(btn.dataset.i), 1); renderFileList(); });
@@ -887,13 +963,13 @@
     // 데모 모드
     if (isDemo()) {
       for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i];
-        progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${file.name} 업로드 중...`;
+        const { file, relPath } = selectedFiles[i];
+        progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${relPath} 업로드 중...`;
         setProgress(0);
         await new Promise(r => setTimeout(r, 300));
         for (let p = 10; p <= 100; p += 10) { setProgress(p); await new Promise(r => setTimeout(r, 120)); }
         const today = new Date().toISOString().slice(0, 10);
-        results.push({ name: file.name, url: `https://example.r2.dev/uploads/${today}/${encodeURIComponent(file.name)}`, size: file.size, key: `uploads/main/${today}/${encodeURIComponent(file.name)}` });
+        results.push({ name: relPath, url: `https://example.r2.dev/uploads/${today}/${encodeURIComponent(relPath)}`, size: file.size, key: `uploads/main/${today}/${encodeURIComponent(relPath)}` });
       }
       progressText.textContent = '✅ 업로드 완료! (데모)';
       setProgress(100);
@@ -906,17 +982,15 @@
     }
 
     for (let i = 0; i < selectedFiles.length; i++) {
-      const file = selectedFiles[i];
-      progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${file.name} 업로드 중...`;
+      const { file, relPath } = selectedFiles[i];
+      progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${relPath} 업로드 중...`;
       setProgress(0);
       try {
-        const formData = new FormData();
-        formData.append('file', file);
-        await uploadWithProgress(file, secret, pct => setProgress(pct));
-        results.push({ name: file.name, url: lastDownloadUrl, size: file.size, key: lastKey });
+        await uploadWithProgress(file, relPath, secret, pct => setProgress(pct));
+        results.push({ name: relPath, url: lastDownloadUrl, size: file.size, key: lastKey });
         setProgress(100);
       } catch (e) {
-        showError(`${file.name}: ${e.message}`);
+        showError(`${relPath}: ${e.message}`);
         progressWrap.classList.remove('show');
         uploadBtn.disabled = false;
         return;
@@ -935,10 +1009,11 @@
   let lastDownloadUrl = '';
   let lastKey = '';
 
-  async function uploadWithProgress(file, secret, onProgress) {
-    // 1. Worker에서 presigned URL 발급
+  async function uploadWithProgress(file, relPath, secret, onProgress) {
+    // 1. Worker에서 presigned URL 발급 (relPath의 '/'는 경로 구분자로 유지, 각 구간만 인코딩)
+    const encodedPath = relPath.split('/').map(encodeURIComponent).join('/');
     const res = await fetch(
-      `${WORKER_URL}/get-upload-url?filename=${encodeURIComponent(file.name)}&type=${encodeURIComponent(file.type || 'application/octet-stream')}`,
+      `${WORKER_URL}/get-upload-url?filename=${encodedPath}&type=${encodeURIComponent(file.type || 'application/octet-stream')}`,
       { headers: { 'X-Secret-Key': secret } }
     );
     if (!res.ok) {
@@ -1000,7 +1075,13 @@
       const grouped = {};
       files.forEach(f => {
         const parts = f.key.split('/');
-        const date = parts.length >= 4 ? parts[2] : parts[1] || '날짜 없음';
+        let date, relParts;
+        if (parts.length >= 4) { date = parts[2]; relParts = parts.slice(3); }
+        else if (parts.length === 3) { date = parts[1]; relParts = parts.slice(2); }
+        else { date = '날짜 없음'; relParts = parts.slice(1); }
+        if (!relParts.length) relParts = [parts[parts.length - 1]];
+        f._relPath = relParts.map(p => decodeURIComponent(p)).join('/');
+        f._folder = f._relPath.includes('/') ? f._relPath.split('/').slice(0, -1).join('/') : null;
         if (!grouped[date]) grouped[date] = [];
         grouped[date].push(f);
       });
@@ -1012,31 +1093,40 @@
         divider.className = 'date-divider';
         divider.textContent = date;
         container.appendChild(divider);
-        grouped[date].forEach(f => {
-          const filename = decodeURIComponent(f.key.split('/').pop());
-          const card = makeFcard({ name: filename, url: f.url, size: f.size, key: f.key });
-          const deleteBtn = document.createElement('button');
-          deleteBtn.className = 'delete-btn';
-          deleteBtn.textContent = '🗑 삭제';
-          deleteBtn.addEventListener('click', async () => {
-            if (!confirm(`"${filename}" 파일을 삭제할까요?`)) return;
-            deleteBtn.textContent = '삭제 중...';
-            deleteBtn.disabled = true;
-            try {
-              const res = await fetch(`${WORKER_URL}/upload-delete`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json', 'X-Secret-Key': getSecret() },
-                body: JSON.stringify({ key: f.key }),
-              });
-              if (!res.ok) throw new Error('삭제 실패');
-              card.remove();
-            } catch (e) {
-              alert('삭제 실패: ' + e.message);
-              deleteBtn.textContent = '🗑 삭제';
-              deleteBtn.disabled = false;
-            }
+
+        const dateFiles = grouped[date];
+        const byFolder = {};
+        dateFiles.filter(f => f._folder).forEach(f => {
+          if (!byFolder[f._folder]) byFolder[f._folder] = [];
+          byFolder[f._folder].push(f);
+        });
+
+        Object.keys(byFolder).sort().forEach(folder => {
+          const group = document.createElement('div');
+          group.className = 'folder-group';
+          const header = document.createElement('div');
+          header.className = 'folder-group-header';
+          const title = document.createElement('span');
+          title.className = 'folder-group-title';
+          title.textContent = `📁 ${folder} (${byFolder[folder].length}개)`;
+          const zipBtn = document.createElement('button');
+          zipBtn.className = 'folder-dl-btn';
+          zipBtn.textContent = '📦 폴더 전체 다운로드';
+          zipBtn.addEventListener('click', () => downloadFolderAsZip(folder, byFolder[folder], zipBtn));
+          header.appendChild(title);
+          header.appendChild(zipBtn);
+          group.appendChild(header);
+          byFolder[folder].forEach(f => {
+            const card = makeFcard({ name: f._relPath, url: f.url, size: f.size, key: f.key });
+            attachDeleteBtn(card, f);
+            group.appendChild(card);
           });
-          card.querySelector('.fcard-name').appendChild(deleteBtn);
+          container.appendChild(group);
+        });
+
+        dateFiles.filter(f => !f._folder).forEach(f => {
+          const card = makeFcard({ name: f._relPath, url: f.url, size: f.size, key: f.key });
+          attachDeleteBtn(card, f);
           container.appendChild(card);
         });
       });
@@ -1047,6 +1137,114 @@
       listErrorBox.textContent = '⚠️ ' + e.message;
       listErrorBox.classList.add('show');
       listContent.innerHTML = '';
+    }
+  }
+
+  function attachDeleteBtn(card, f) {
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.textContent = '🗑 삭제';
+    deleteBtn.addEventListener('click', async () => {
+      if (!confirm(`"${f._relPath}" 파일을 삭제할까요?`)) return;
+      deleteBtn.textContent = '삭제 중...';
+      deleteBtn.disabled = true;
+      try {
+        const res = await fetch(`${WORKER_URL}/upload-delete`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', 'X-Secret-Key': getSecret() },
+          body: JSON.stringify({ key: f.key }),
+        });
+        if (!res.ok) throw new Error('삭제 실패');
+        card.remove();
+      } catch (e) {
+        alert('삭제 실패: ' + e.message);
+        deleteBtn.textContent = '🗑 삭제';
+        deleteBtn.disabled = false;
+      }
+    });
+    card.querySelector('.fcard-name').appendChild(deleteBtn);
+  }
+
+  // 폴더 다운로드: 가능하면 압축 없이 실제 폴더에 그대로 저장(Chrome/Edge), 아니면 zip으로 대체
+  async function downloadFolderAsZip(folder, fileList, btn) {
+    if (window.showDirectoryPicker) {
+      let dirHandle;
+      try {
+        dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      } catch (e) {
+        if (e.name === 'AbortError') return; // 사용자가 폴더 선택 취소
+        return downloadFolderZip(folder, fileList, btn);
+      }
+      return downloadFolderNative(folder, fileList, btn, dirHandle);
+    }
+    return downloadFolderZip(folder, fileList, btn);
+  }
+
+  async function downloadFolderNative(folder, fileList, btn, dirHandle) {
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    try {
+      const targetDir = await dirHandle.getDirectoryHandle(folder.split('/').pop(), { create: true });
+      for (let i = 0; i < fileList.length; i++) {
+        const f = fileList[i];
+        btn.textContent = `저장 중... (${i + 1}/${fileList.length})`;
+        const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(f.key)}`, {
+          headers: { 'X-Secret-Key': getSecret() }
+        });
+        if (!res.ok) throw new Error(`${f._relPath} 다운로드 실패`);
+        const blob = await res.blob();
+        const innerPath = f._relPath.startsWith(folder + '/') ? f._relPath.slice(folder.length + 1) : f._relPath;
+        const parts = innerPath.split('/');
+        let currentDir = targetDir;
+        for (let p = 0; p < parts.length - 1; p++) {
+          currentDir = await currentDir.getDirectoryHandle(parts[p], { create: true });
+        }
+        const fileHandle = await currentDir.getFileHandle(parts[parts.length - 1], { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      }
+      btn.textContent = '✅ 저장 완료!';
+      setTimeout(() => { btn.textContent = originalText; }, 2000);
+    } catch (e) {
+      alert('폴더 저장 실패: ' + e.message);
+      btn.textContent = originalText;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function downloadFolderZip(folder, fileList, btn) {
+    if (typeof JSZip === 'undefined') { alert('zip 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.'); return; }
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    try {
+      const zip = new JSZip();
+      for (let i = 0; i < fileList.length; i++) {
+        const f = fileList[i];
+        btn.textContent = `압축 준비 중... (${i + 1}/${fileList.length})`;
+        const res = await fetch(`${WORKER_URL}/download?key=${encodeURIComponent(f.key)}`, {
+          headers: { 'X-Secret-Key': getSecret() }
+        });
+        if (!res.ok) throw new Error(`${f._relPath} 다운로드 실패`);
+        const blob = await res.blob();
+        const innerPath = f._relPath.startsWith(folder + '/') ? f._relPath.slice(folder.length + 1) : f._relPath;
+        zip.file(innerPath, blob);
+      }
+      btn.textContent = '📦 압축 파일 생성 중...';
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(zipBlob);
+      a.download = `${folder.split('/').pop()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      alert('폴더 다운로드 실패: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
     }
   }
 
