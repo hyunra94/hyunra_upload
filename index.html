@@ -144,7 +144,8 @@
     }
     .header-eyebrow::before {
       content: "";
-      width: 8px; height: 8px; border-radius: 50%; background: var(--pink);
+      width: 8px; height: 8px; flex-shrink: 0; margin-right: 28px;
+      background: var(--pink); border-radius: 50%;
       box-shadow: 14px 0 0 var(--blue), 28px 0 0 var(--green);
     }
 
@@ -351,13 +352,14 @@
     }
     .refresh-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
 
-    .folder-select-btn {
-      display: block; margin: 10px auto 0; background: rgba(255,255,255,.86);
-      border: 1px solid rgba(67,60,82,0.1); border-radius: 999px; padding: 8px 14px;
-      font-size: 12px; font-family: inherit; font-weight: 800; color: var(--blue-deep);
+    .select-action-btn {
+      display: block; width: 100%; background: rgba(255,255,255,.86);
+      border: 1px solid rgba(67,60,82,0.1); border-radius: 14px; padding: 11px 12px;
+      font-size: 13px; font-family: inherit; font-weight: 800; color: var(--blue-deep);
       cursor: pointer; transition: all .2s;
     }
-    .folder-select-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+    .select-action-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+    .file-list:empty { display: none; }
 
     .folder-group {
       border: 1px dashed rgba(67,60,82,0.15); border-radius: 18px; padding: 10px; margin: 8px 0;
@@ -482,7 +484,7 @@
             <span>최대 5GB · 여러 파일·폴더 동시 업로드 · Ctrl+V 붙여넣기 가능</span>
           </div>
           <input type="file" id="folderInput" webkitdirectory multiple style="display:none" />
-          <button type="button" class="folder-select-btn" id="folderSelectBtn">📂 폴더 통째로 선택</button>
+          <button type="button" class="select-action-btn" id="folderSelectBtn">📂 폴더 통째로 선택</button>
           <div class="file-list" id="fileList"></div>
           <div class="progress-wrap" id="progressWrap">
             <div class="progress-label">
