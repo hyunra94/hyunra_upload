@@ -529,6 +529,9 @@
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
   const WORKER_URL = 'https://file-upload.hyunra94.workers.dev';
+  const MULTIPART_THRESHOLD = 20 * 1024 * 1024; // 20MB 이상이면 멀티파트로 업로드
+  const MULTIPART_PART_SIZE = 25 * 1024 * 1024; // 파트당 25MB
+  const MULTIPART_PART_RETRY = 3; // 파트별 재시도 횟수
   const DEMO_KEY = 'test';
 
   const secretKeyInput = document.getElementById('secretKey');
@@ -988,7 +991,7 @@
       progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${relPath} 업로드 중...`;
       setProgress(0);
       try {
-        await uploadWithProgress(file, relPath, secret, pct => setProgress(pct));
+        await uploadFileSmart(file, relPath, secret, pct => setProgress(pct));
         results.push({ name: relPath, url: lastDownloadUrl, size: file.size, key: lastKey });
         setProgress(100);
       } catch (e) {
@@ -1052,6 +1055,111 @@
       xhr.addEventListener('error', () => reject(new Error(`네트워크 오류 (${diag()})`)));
       xhr.addEventListener('timeout', () => reject(new Error(`업로드 시간 초과 (${diag()})`)));
       xhr.send(file);
+    });
+  }
+
+  // 파일 크기에 따라 단일 PUT 또는 멀티파트 업로드로 자동 분기
+  async function uploadFileSmart(file, relPath, secret, onProgress) {
+    if (file.size < MULTIPART_THRESHOLD) {
+      return uploadWithProgress(file, relPath, secret, onProgress);
+    }
+    return uploadMultipart(file, relPath, secret, onProgress);
+  }
+
+  // 큰 파일을 여러 조각으로 나눠 업로드 — 조각 하나가 실패해도 그 조각만 재시도하면 됨
+  async function uploadMultipart(file, relPath, secret, onProgress) {
+    const encodedPath = relPath.split('/').map(encodeURIComponent).join('/');
+
+    const createRes = await fetch(
+      `${WORKER_URL}/multipart-create?filename=${encodedPath}&type=${encodeURIComponent(file.type || 'application/octet-stream')}`,
+      { method: 'POST', headers: { 'X-Secret-Key': secret } }
+    );
+    if (!createRes.ok) {
+      const err = await createRes.json().catch(() => ({ error: '멀티파트 업로드 시작 실패' }));
+      throw new Error(err.error || '멀티파트 업로드 시작 실패');
+    }
+    const { key, uploadId } = await createRes.json();
+    lastKey = key;
+
+    const totalParts = Math.ceil(file.size / MULTIPART_PART_SIZE);
+    const uploadedBytes = new Array(totalParts).fill(0);
+    const reportProgress = () => {
+      const done = uploadedBytes.reduce((a, b) => a + b, 0);
+      onProgress(Math.round(done / file.size * 100));
+    };
+
+    try {
+      for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+        const start = (partNumber - 1) * MULTIPART_PART_SIZE;
+        const end = Math.min(start + MULTIPART_PART_SIZE, file.size);
+        const chunk = file.slice(start, end);
+        await uploadPartWithRetry(key, uploadId, partNumber, chunk, secret, loaded => {
+          uploadedBytes[partNumber - 1] = loaded;
+          reportProgress();
+        });
+        uploadedBytes[partNumber - 1] = chunk.size;
+        reportProgress();
+      }
+    } catch (e) {
+      fetch(`${WORKER_URL}/multipart-abort`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Secret-Key': secret },
+        body: JSON.stringify({ key, uploadId }),
+      }).catch(() => {});
+      throw e;
+    }
+
+    const completeRes = await fetch(`${WORKER_URL}/multipart-complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Secret-Key': secret },
+      body: JSON.stringify({ key, uploadId }),
+    });
+    if (!completeRes.ok) {
+      const err = await completeRes.json().catch(() => ({ error: '업로드 완료 처리 실패' }));
+      throw new Error(err.error || '업로드 완료 처리 실패');
+    }
+    const { downloadUrl } = await completeRes.json();
+    lastDownloadUrl = downloadUrl;
+  }
+
+  async function uploadPartWithRetry(key, uploadId, partNumber, chunk, secret, onChunkProgress) {
+    let lastErr;
+    for (let attempt = 1; attempt <= MULTIPART_PART_RETRY; attempt++) {
+      try {
+        await uploadPart(key, uploadId, partNumber, chunk, secret, onChunkProgress);
+        return;
+      } catch (e) {
+        lastErr = e;
+        onChunkProgress(0);
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
+    }
+    throw new Error(`파트 ${partNumber}번 업로드 실패 (${MULTIPART_PART_RETRY}회 재시도 후 포기): ${lastErr.message}`);
+  }
+
+  async function uploadPart(key, uploadId, partNumber, chunk, secret, onChunkProgress) {
+    const res = await fetch(
+      `${WORKER_URL}/multipart-part-url?key=${encodeURIComponent(key)}&uploadId=${encodeURIComponent(uploadId)}&partNumber=${partNumber}`,
+      { headers: { 'X-Secret-Key': secret } }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: '파트 URL 발급 실패' }));
+      throw new Error(err.error || '파트 URL 발급 실패');
+    }
+    const { uploadUrl } = await res.json();
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl);
+      xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) onChunkProgress(e.loaded);
+      });
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`HTTP ${xhr.status}`));
+      });
+      xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
+      xhr.send(chunk);
     });
   }
 
