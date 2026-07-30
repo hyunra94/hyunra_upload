@@ -112,6 +112,13 @@ function xmlTag(xml, tag) {
   return m ? m[1] : null;
 }
 
+// R2 오브젝트 키를 만들 때 쓰는 인코더. encodeURIComponent는 !*'() 를 인코딩하지 않고 그대로
+// 두는데, AWS SigV4 서명 검증은 이 문자들도 퍼센트 인코딩되어 있어야 해서, 파일명에 괄호 등이
+// 있으면 서명이 어긋나 SignatureDoesNotMatch가 난다. 그래서 그 문자들만 추가로 인코딩해준다.
+function s3KeyEncode(str) {
+  return encodeURIComponent(str).replace(/[!*'()]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+}
+
 // ── AWS Signature V4 헬퍼
 async function sha256hex(message) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(message));
@@ -222,7 +229,7 @@ async function handleGetUploadUrl(request, env, url) {
     const filename = url.searchParams.get('filename') || `file_${Date.now()}`;
     const contentType = 'application/octet-stream';
     const date = new Date().toISOString().slice(0, 10);
-    const key = `uploads/${keyType}/${date}/${encodeURIComponent(filename)}`;
+    const key = `uploads/${keyType}/${date}/${s3KeyEncode(filename)}`;
 
     const uploadUrl = await generatePresignedUrl(env, key, contentType);
     return json({ uploadUrl, key, downloadUrl: `${env.R2_PUBLIC_URL}/${key}` });
@@ -240,7 +247,7 @@ async function handleMultipartCreate(request, env, url) {
     const filename = url.searchParams.get('filename') || `file_${Date.now()}`;
     const contentType = url.searchParams.get('type') || 'application/octet-stream';
     const date = new Date().toISOString().slice(0, 10);
-    const key = `uploads/${keyType}/${date}/${encodeURIComponent(filename)}`;
+    const key = `uploads/${keyType}/${date}/${s3KeyEncode(filename)}`;
 
     const res = await r2SignedRequest(env, 'POST', key, { uploads: '' }, null);
     const bodyText = await res.text();
@@ -353,7 +360,7 @@ async function handleRawUpload(request, env, url) {
     const uniqueName = `${ts}_${filename}`;
     const contentType = request.headers.get('Content-Type') || 'application/octet-stream';
     const date = new Date().toISOString().slice(0, 10);
-    const key = `uploads/${keyType}/${date}/${encodeURIComponent(uniqueName)}`;
+    const key = `uploads/${keyType}/${date}/${s3KeyEncode(uniqueName)}`;
 
     await env.R2_BUCKET.put(key, request.body, {
       httpMetadata: { contentType },
@@ -380,7 +387,7 @@ async function handleBase64Upload(request, env) {
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
 
     const date = new Date().toISOString().slice(0, 10);
-    const key = `uploads/${keyType}/${date}/${encodeURIComponent(filename)}`;
+    const key = `uploads/${keyType}/${date}/${s3KeyEncode(filename)}`;
 
     await env.R2_BUCKET.put(key, bytes, {
       httpMetadata: { contentType: contentType || 'application/octet-stream' },
@@ -407,7 +414,7 @@ async function handleUpload(request, env) {
     if (file.size > MAX_FILE) return json({ error: 'Worker 경유 업로드는 100MB 제한입니다. presigned URL을 사용하세요.' }, 400);
 
     const date = new Date().toISOString().slice(0, 10);
-    const key = `uploads/${keyType}/${date}/${encodeURIComponent(file.name)}`;
+    const key = `uploads/${keyType}/${date}/${s3KeyEncode(file.name)}`;
 
     await env.R2_BUCKET.put(key, file.stream(), {
       httpMetadata: { contentType: file.type || 'application/octet-stream' },
