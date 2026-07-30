@@ -85,6 +85,11 @@ export default {
       return handleDownload(request, env);
     }
 
+    // GET /usage → R2 총 사용량 조회
+    if (url.pathname === '/usage' && request.method === 'GET') {
+      return handleUsage(request, env);
+    }
+
     return new Response('Not found', { status: 404 });
   }
 };
@@ -505,6 +510,31 @@ async function handleDownload(request, env) {
         ...corsHeaders,
       },
     });
+  } catch (e) {
+    return json({ error: e.message }, 500);
+  }
+}
+
+// ── R2 총 사용량 조회 (버킷 전체 파일을 나열하며 용량/개수 합산 — 메인 키만 허용)
+async function handleUsage(request, env) {
+  const keyType = checkSecret(request, env);
+  if (!keyType) return json({ error: '비밀키가 올바르지 않습니다.' }, 401);
+  if (keyType !== 'main') return json({ error: '메인 비밀키로만 조회할 수 있습니다.' }, 403);
+
+  try {
+    let totalSize = 0;
+    let totalCount = 0;
+    let cursor;
+    do {
+      const listed = await env.R2_BUCKET.list({ cursor, limit: 1000 });
+      for (const obj of listed.objects) {
+        totalSize += obj.size;
+        totalCount++;
+      }
+      cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
+
+    return json({ totalSize, totalCount });
   } catch (e) {
     return json({ error: e.message }, 500);
   }

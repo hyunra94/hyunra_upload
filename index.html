@@ -127,6 +127,47 @@
       font-size: 11px; font-weight: 700; white-space: nowrap;
     }
 
+    .toolbar-right { display: flex; align-items: center; gap: 8px; justify-self: end; }
+    .settings-btn {
+      width: 30px; height: 30px; display: grid; place-items: center;
+      border-radius: 50%; border: 1px solid rgba(67,60,82,0.1);
+      background: rgba(255,255,255,.78); cursor: pointer; font-size: 14px;
+      transition: all .2s; flex-shrink: 0;
+    }
+    .settings-btn:hover { transform: translateY(-1px) rotate(25deg); box-shadow: var(--shadow-soft); }
+
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 50;
+      background: rgba(40,32,48,.42); backdrop-filter: blur(3px);
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+      width: 100%; max-width: 380px; max-height: 80vh; overflow-y: auto;
+      background: #fff; border-radius: 22px; padding: 20px;
+      box-shadow: 0 30px 60px rgba(40,32,48,.3);
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .modal-header h2 { font-size: 17px; font-weight: 800; color: var(--text); }
+    .modal-close {
+      width: 28px; height: 28px; display: grid; place-items: center;
+      border-radius: 50%; border: none; background: rgba(67,60,82,0.08);
+      cursor: pointer; font-size: 13px; color: var(--text-sub);
+    }
+    .modal-close:hover { background: rgba(67,60,82,0.16); }
+    .usage-stat {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 22px 12px; border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.9), var(--pink-light));
+      border: 1px solid rgba(255,255,255,.7); margin-bottom: 10px;
+    }
+    .usage-stat-value { font-size: 26px; font-weight: 800; color: var(--blue-deep); letter-spacing: -0.02em; }
+    .usage-stat-label { font-size: 12px; color: var(--text-sub); font-weight: 700; }
+    .usage-stat-count { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+
     .card { width: 100%; overflow: hidden; background: rgba(255,255,255,.58); }
 
     .card-header {
@@ -436,7 +477,10 @@
         <span></span><span></span><span></span>
       </div>
       <div class="window-title">cloud-drop/upload</div>
-      <div class="toolbar-pill">7일 보관</div>
+      <div class="toolbar-right">
+        <button type="button" class="settings-btn" id="settingsBtn" aria-label="설정" title="설정">⚙️</button>
+        <div class="toolbar-pill">7일 보관</div>
+      </div>
     </div>
 
     <div class="card">
@@ -525,6 +569,19 @@
     </div>
   </section>
 </main>
+
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>⚙️ 설정</h2>
+      <button type="button" class="modal-close" id="settingsCloseBtn">✕</button>
+    </div>
+    <button class="refresh-btn" id="usageRefreshBtn" style="width:100%;margin-bottom:12px;">🔄 사용량 새로고침</button>
+    <div id="usageContent">
+      <div class="list-empty">비밀키를 입력하고 새로고침을 눌러주세요 🔑</div>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
@@ -655,7 +712,7 @@
         const blob = new Blob([uint8], { type: f.type });
         return new File([blob], f.name, { type: f.type });
       });
-      addFiles(files);
+      addFiles(files.map(f => ({ file: f, relPath: f.name })));
       document.getElementById('shareNotice').classList.add('show');
       setTimeout(() => document.getElementById('shareNotice').classList.remove('show'), 4000);
     } catch (e) { console.error('공유 파일 복원 실패:', e); }
@@ -788,7 +845,27 @@
           headers: { 'X-Secret-Key': getSecret() }
         });
         if (!res.ok) throw new Error('다운로드 실패');
-        const blob = await res.blob();
+
+        const total = Number(res.headers.get('Content-Length')) || 0;
+        let blob;
+        if (res.body && res.body.getReader) {
+          const reader = res.body.getReader();
+          const chunks = [];
+          let loaded = 0;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            loaded += value.length;
+            dlBtn.textContent = total
+              ? `⬇️ ${Math.round(loaded / total * 100)}%`
+              : `⬇️ ${formatSize(loaded)}`;
+          }
+          blob = new Blob(chunks);
+        } else {
+          blob = await res.blob();
+        }
+
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = name;
@@ -1365,6 +1442,44 @@
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;
+    }
+  }
+
+  // ── 설정(사용량) 모달
+  const settingsModal = document.getElementById('settingsModal');
+  const usageContent = document.getElementById('usageContent');
+
+  document.getElementById('settingsBtn').addEventListener('click', () => {
+    settingsModal.classList.add('show');
+    if (getSecret()) loadUsage();
+  });
+  document.getElementById('settingsCloseBtn').addEventListener('click', () => settingsModal.classList.remove('show'));
+  settingsModal.addEventListener('click', e => {
+    if (e.target === settingsModal) settingsModal.classList.remove('show');
+  });
+  document.getElementById('usageRefreshBtn').addEventListener('click', loadUsage);
+
+  async function loadUsage() {
+    const secret = getSecret();
+    if (!secret) {
+      usageContent.innerHTML = '<div class="list-empty">비밀키를 입력하고 새로고침을 눌러주세요 🔑</div>';
+      return;
+    }
+    usageContent.innerHTML = '<div class="list-loading">⏳ 불러오는 중...</div>';
+    try {
+      const res = await fetch(`${WORKER_URL}/usage`, { headers: { 'X-Secret-Key': secret } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '사용량 조회 실패');
+
+      usageContent.innerHTML = `
+        <div class="usage-stat">
+          <div class="usage-stat-value">${formatSize(data.totalSize)}</div>
+          <div class="usage-stat-label">R2 총 사용량</div>
+          <div class="usage-stat-count">파일 ${data.totalCount.toLocaleString()}개</div>
+        </div>
+      `;
+    } catch (e) {
+      usageContent.innerHTML = `<div class="error-box show">⚠️ ${e.message}</div>`;
     }
   }
 
