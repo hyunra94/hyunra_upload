@@ -164,7 +164,7 @@ async function generatePresignedUrl(env, key, contentType, expiresIn = 3600, ext
   });
   for (const [k, v] of Object.entries(extraParams)) params.set(k, v);
 
-  const sortedParams = [...params.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const sortedParams = [...params.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   const canonicalQS = sortedParams.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
   const canonicalUri = `/${bucket}/${key}`;
   const canonicalHeaders = `host:${host}\n`;
@@ -193,7 +193,7 @@ async function r2SignedRequest(env, method, key, queryParams, body) {
 
   const payloadHash = await sha256hex(body || '');
 
-  const sortedParams = Object.entries(queryParams || {}).sort(([a], [b]) => a.localeCompare(b));
+  const sortedParams = Object.entries(queryParams || {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   const canonicalQS = sortedParams.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
   const canonicalUri = `/${bucket}/${key}`;
   const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
