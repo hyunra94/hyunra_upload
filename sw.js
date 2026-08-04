@@ -4,7 +4,7 @@ const CACHE_NAME = 'share-target-v1';
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  if (url.pathname === '/share-target' && event.request.method === 'POST') {
+  if (url.pathname.endsWith('/share-target') && event.request.method === 'POST') {
     event.respondWith(handleShareTarget(event.request));
     return;
   }
@@ -41,6 +41,7 @@ async function handleShareTarget(request) {
     console.error('Share target error:', e);
   }
 
-  // 메인 페이지로 리다이렉트
-  return Response.redirect('/?shared=true', 303);
+  // 메인 페이지로 리다이렉트 (서브경로 배포 대응: 등록 scope 기준 상대 경로 사용)
+  const scopeUrl = new URL(self.registration.scope);
+  return Response.redirect(`${scopeUrl.pathname}?shared=true`, 303);
 }
