@@ -314,16 +314,10 @@
     }
     .file-item .file-name { flex: 1; color: var(--text); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .file-item .file-size { color: var(--text-sub); font-size: 12px; flex-shrink: 0; }
-    .file-item.uploading .file-progress { color: var(--blue-deep); font-weight: 800; }
     .file-item .remove-btn {
       width: 24px; height: 24px; border: none; border-radius: 50%; cursor: pointer;
       color: var(--danger); background: var(--danger-bg); font-size: 13px; flex-shrink: 0; line-height: 1;
     }
-    .auto-upload-label {
-      display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-sub);
-      font-weight: 700; white-space: nowrap; cursor: pointer; flex-shrink: 0;
-    }
-    .auto-upload-label input { width: 13px; height: 13px; cursor: pointer; }
 
     .progress-wrap {
       display: none; padding: 14px; border-radius: 18px;
@@ -532,7 +526,6 @@
             <div class="dropzone-icon">⇧</div>
             <p>파일이나 폴더를 드래그하거나 클릭해서 선택</p>
             <span>최대 5GB · 여러 파일·폴더 동시 업로드 · Ctrl+V 붙여넣기 가능</span>
-            <span>파일 목록에서 "자동" 체크 시 큰 파일도 기다릴 필요 없이 바로 백그라운드로 업로드돼요</span>
           </div>
           <input type="file" id="folderInput" webkitdirectory multiple style="display:none" />
           <button type="button" class="select-action-btn" id="folderSelectBtn">📂 폴더 통째로 선택</button>
@@ -941,7 +934,7 @@
   const errorBox = document.getElementById('errorBox');
   const folderInput = document.getElementById('folderInput');
   const folderSelectBtn = document.getElementById('folderSelectBtn');
-  let selectedFiles = []; // { id, file, relPath, autoUpload, uploading, progress }
+  let selectedFiles = []; // { id, file, relPath }
   let fileIdCounter = 0;
 
   dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
@@ -1001,7 +994,6 @@
 
   function addFiles(items) {
     items.forEach(({ file: f, relPath }) => {
-      const base = { id: ++fileIdCounter, file: f, autoUpload: false, uploading: false, progress: 0 };
       // 목록에 같은 경로가 이미 있으면 (내용이 완전히 같아도) 조용히 무시하지 않고
       // _2, _3 ... 처럼 겹치지 않는 이름으로 항상 추가한다.
       let finalPath = relPath;
@@ -1013,7 +1005,7 @@
         while (selectedFiles.some(x => x.relPath === `${nameOnly}_${n}${ext}`)) n++;
         finalPath = `${nameOnly}_${n}${ext}`;
       }
-      selectedFiles.push({ ...base, relPath: finalPath });
+      selectedFiles.push({ id: ++fileIdCounter, file: f, relPath: finalPath });
     });
     renderFileList();
   }
@@ -1022,22 +1014,9 @@
     fileListEl.innerHTML = '';
     selectedFiles.forEach(item => {
       const el = document.createElement('div');
-      el.className = 'file-item' + (item.uploading ? ' uploading' : '');
-      el.dataset.itemId = item.id;
+      el.className = 'file-item';
       const icon = item.relPath.includes('/') ? '📁' : '📄';
-      if (item.uploading) {
-        el.innerHTML = `<span>${icon}</span><span class="file-name">${item.relPath}</span><span class="file-size file-progress">⏳ ${item.progress}%</span>`;
-      } else {
-        el.innerHTML = `
-          <span>${icon}</span>
-          <span class="file-name">${item.relPath}</span>
-          <span class="file-size">${formatSize(item.file.size)}</span>
-          <label class="auto-upload-label" title="체크하면 바로 백그라운드로 업로드돼요">
-            <input type="checkbox" class="auto-cb" data-id="${item.id}" ${item.autoUpload ? 'checked' : ''} />
-            자동
-          </label>
-          <button class="remove-btn" data-id="${item.id}">✕</button>`;
-      }
+      el.innerHTML = `<span>${icon}</span><span class="file-name">${item.relPath}</span><span class="file-size">${formatSize(item.file.size)}</span><button class="remove-btn" data-id="${item.id}">✕</button>`;
       fileListEl.appendChild(el);
     });
     fileListEl.querySelectorAll('.remove-btn').forEach(btn => {
@@ -1047,60 +1026,7 @@
         renderFileList();
       });
     });
-    fileListEl.querySelectorAll('.auto-cb').forEach(cb => {
-      cb.addEventListener('change', () => {
-        if (cb.checked) startAutoUpload(Number(cb.dataset.id));
-      });
-    });
-    uploadBtn.disabled = selectedFiles.filter(x => !x.uploading).length === 0;
-  }
-
-  function updateItemProgressUI(id, pct) {
-    const el = fileListEl.querySelector(`.file-item[data-item-id="${id}"] .file-progress`);
-    if (el) el.textContent = `⏳ ${pct}%`;
-  }
-
-  // 파일별 "자동" 체크 시 메인 업로드 버튼을 기다리지 않고 그 파일만 바로 백그라운드로 업로드
-  async function startAutoUpload(id) {
-    const secret = getSecret();
-    const item = selectedFiles.find(x => x.id === id);
-    if (!item) return;
-    if (!secret) { showError('비밀키를 입력해주세요.'); renderFileList(); return; }
-    if (item.uploading) return;
-
-    item.autoUpload = true;
-    item.uploading = true;
-    item.progress = 0;
-    hideError();
-    renderFileList();
-
-    try {
-      let cardData;
-      if (isDemo()) {
-        for (let p = 10; p <= 100; p += 10) {
-          item.progress = p;
-          updateItemProgressUI(id, p);
-          await new Promise(r => setTimeout(r, 120));
-        }
-        const today = new Date().toISOString().slice(0, 10);
-        cardData = { name: item.relPath, url: `https://example.r2.dev/uploads/${today}/${encodeURIComponent(item.relPath)}`, size: item.file.size, key: `uploads/main/${today}/${encodeURIComponent(item.relPath)}` };
-      } else {
-        await uploadFileSmart(item.file, item.relPath, secret, pct => {
-          item.progress = pct;
-          updateItemProgressUI(id, pct);
-        });
-        cardData = { name: item.relPath, url: lastDownloadUrl, size: item.file.size, key: lastKey };
-      }
-      resultBox.appendChild(makeFcard(cardData));
-      resultBox.classList.add('show');
-      selectedFiles = selectedFiles.filter(x => x.id !== id);
-      renderFileList();
-    } catch (e) {
-      showError(`${item.relPath}: ${e.message}`);
-      item.uploading = false;
-      item.autoUpload = false;
-      renderFileList();
-    }
+    uploadBtn.disabled = selectedFiles.length === 0;
   }
 
   function showError(msg) { errorBox.textContent = '⚠️ ' + msg; errorBox.classList.add('show'); }
@@ -1110,9 +1036,7 @@
   uploadBtn.addEventListener('click', async () => {
     const secret = getSecret();
     if (!secret) { showError('비밀키를 입력해주세요.'); return; }
-    // "자동" 체크로 이미 개별 업로드 중인 파일은 제외
-    const targets = selectedFiles.filter(x => !x.uploading);
-    if (!targets.length) { showError('업로드할 파일이 없습니다.'); return; }
+    if (!selectedFiles.length) { showError('파일을 선택해주세요.'); return; }
 
     hideError();
     resultBox.innerHTML = '';
@@ -1120,43 +1044,38 @@
     progressWrap.classList.add('show');
     uploadBtn.disabled = true;
     const results = [];
-    const doneIds = [];
 
     // 데모 모드
     if (isDemo()) {
-      for (let i = 0; i < targets.length; i++) {
-        const { id, file, relPath } = targets[i];
-        progressText.textContent = `(${i + 1}/${targets.length}) ${relPath} 업로드 중...`;
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const { file, relPath } = selectedFiles[i];
+        progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${relPath} 업로드 중...`;
         setProgress(0);
         await new Promise(r => setTimeout(r, 300));
         for (let p = 10; p <= 100; p += 10) { setProgress(p); await new Promise(r => setTimeout(r, 120)); }
         const today = new Date().toISOString().slice(0, 10);
         results.push({ name: relPath, url: `https://example.r2.dev/uploads/${today}/${encodeURIComponent(relPath)}`, size: file.size, key: `uploads/main/${today}/${encodeURIComponent(relPath)}` });
-        doneIds.push(id);
       }
       progressText.textContent = '✅ 업로드 완료! (데모)';
       setProgress(100);
       results.forEach(r => resultBox.appendChild(makeFcard(r)));
       resultBox.classList.add('show');
-      selectedFiles = selectedFiles.filter(x => !doneIds.includes(x.id));
+      selectedFiles = [];
       renderFileList();
       setTimeout(() => progressWrap.classList.remove('show'), 1500);
       return;
     }
 
-    for (let i = 0; i < targets.length; i++) {
-      const { id, file, relPath } = targets[i];
-      progressText.textContent = `(${i + 1}/${targets.length}) ${relPath} 업로드 중...`;
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const { file, relPath } = selectedFiles[i];
+      progressText.textContent = `(${i + 1}/${selectedFiles.length}) ${relPath} 업로드 중...`;
       setProgress(0);
       try {
         await uploadFileSmart(file, relPath, secret, pct => setProgress(pct));
         results.push({ name: relPath, url: lastDownloadUrl, size: file.size, key: lastKey });
-        doneIds.push(id);
         setProgress(100);
       } catch (e) {
         showError(`${relPath}: ${e.message}`);
-        selectedFiles = selectedFiles.filter(x => !doneIds.includes(x.id));
-        renderFileList();
         progressWrap.classList.remove('show');
         uploadBtn.disabled = false;
         return;
@@ -1167,7 +1086,7 @@
     setProgress(100);
     results.forEach(r => resultBox.appendChild(makeFcard(r)));
     resultBox.classList.add('show');
-    selectedFiles = selectedFiles.filter(x => !doneIds.includes(x.id));
+    selectedFiles = [];
     renderFileList();
     setTimeout(() => progressWrap.classList.remove('show'), 1500);
   });
