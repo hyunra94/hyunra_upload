@@ -994,18 +994,20 @@
 
   function addFiles(items) {
     items.forEach(({ file: f, relPath }) => {
-      // 목록에 같은 경로가 이미 있으면 (내용이 완전히 같아도) 조용히 무시하지 않고
-      // _2, _3 ... 처럼 겹치지 않는 이름으로 항상 추가한다.
-      let finalPath = relPath;
-      if (selectedFiles.some(x => x.relPath === finalPath)) {
+      const isDup = selectedFiles.find(x => x.relPath === relPath && x.file.size === f.size);
+      if (isDup) return;
+      // 같은 경로가 이미 있으면 시간 추가
+      const pathExists = selectedFiles.find(x => x.relPath === relPath);
+      if (pathExists) {
+        const ts = new Date().toTimeString().slice(0,8).replace(/:/g,'-');
         const dot = relPath.lastIndexOf('.');
-        const nameOnly = dot > -1 ? relPath.slice(0, dot) : relPath;
-        const ext = dot > -1 ? relPath.slice(dot) : '';
-        let n = 2;
-        while (selectedFiles.some(x => x.relPath === `${nameOnly}_${n}${ext}`)) n++;
-        finalPath = `${nameOnly}_${n}${ext}`;
+        const newRelPath = dot > -1
+          ? `${relPath.slice(0, dot)}_${ts}${relPath.slice(dot)}`
+          : `${relPath}_${ts}`;
+        selectedFiles.push({ id: ++fileIdCounter, file: f, relPath: newRelPath });
+      } else {
+        selectedFiles.push({ id: ++fileIdCounter, file: f, relPath });
       }
-      selectedFiles.push({ id: ++fileIdCounter, file: f, relPath: finalPath });
     });
     renderFileList();
   }
