@@ -700,18 +700,21 @@
   async function loadSharedFiles() {
     const params = new URLSearchParams(location.search);
     if (!params.has('shared')) return;
-    history.replaceState({}, '', '/');
+    history.replaceState({}, '', location.pathname);
     try {
       const cache = await caches.open('share-target-v1');
-      const res = await cache.match('/shared-files');
-      if (!res) return;
-      const fileDataList = await res.json();
-      await cache.delete('/shared-files');
-      const files = fileDataList.map(f => {
-        const uint8 = new Uint8Array(f.data);
-        const blob = new Blob([uint8], { type: f.type });
-        return new File([blob], f.name, { type: f.type });
-      });
+      const keys = (await cache.keys()).filter(req => new URL(req.url).pathname.includes('/shared-files/'));
+      if (!keys.length) return;
+      const files = [];
+      for (const req of keys) {
+        const res = await cache.match(req);
+        await cache.delete(req);
+        if (!res) continue;
+        const blob = await res.blob();
+        const name = decodeURIComponent(res.headers.get('X-File-Name') || 'shared-file');
+        files.push(new File([blob], name, { type: blob.type }));
+      }
+      if (!files.length) return;
       addFiles(files.map(f => ({ file: f, relPath: f.name })));
       document.getElementById('shareNotice').classList.add('show');
       setTimeout(() => document.getElementById('shareNotice').classList.remove('show'), 4000);

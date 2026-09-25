@@ -1,4 +1,9 @@
 const CACHE_NAME = 'share-target-v1';
+const SHARED_PREFIX = 'shared-files/';
+
+// 새 버전이 바로 적용되도록 (대기 상태로 남으면 공유 시 구버전 SW가 처리함)
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 
 // 공유된 파일을 캐시에 저장하고 메인 페이지로 리다이렉트
 self.addEventListener('fetch', event => {
@@ -11,37 +16,33 @@ self.addEventListener('fetch', event => {
 });
 
 async function handleShareTarget(request) {
+  const scopeUrl = new URL(self.registration.scope);
   try {
     const formData = await request.formData();
-    const files = formData.getAll('file');
+    const files = formData.getAll('file').filter(f => f instanceof File);
 
-    if (files.length > 0) {
-      // 파일 데이터를 캐시에 저장
-      const fileDataList = await Promise.all(
-        files.map(async file => {
-          const buffer = await file.arrayBuffer();
-          return {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            data: Array.from(new Uint8Array(buffer)),
-          };
-        })
-      );
+    const cache = await caches.open(CACHE_NAME);
+    // 이전 공유 잔여물 정리
+    for (const req of await cache.keys()) await cache.delete(req);
 
-      const cache = await caches.open(CACHE_NAME);
-      await cache.put(
-        '/shared-files',
-        new Response(JSON.stringify(fileDataList), {
-          headers: { 'Content-Type': 'application/json' },
+    // 파일을 JSON 숫자 배열로 변환하면 사진 몇 장만으로도 메모리가 수십~수백 MB로 불어나
+    // 실패하므로, Blob 그대로 파일별 Response로 저장한다.
+    const stamp = Date.now();
+    await Promise.all(files.map((file, i) =>
+      cache.put(
+        new URL(`${SHARED_PREFIX}${stamp}-${i}`, scopeUrl).href,
+        new Response(file, {
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+            'X-File-Name': encodeURIComponent(file.name || `shared-${stamp}-${i}`),
+          },
         })
-      );
-    }
+      )
+    ));
   } catch (e) {
     console.error('Share target error:', e);
   }
 
   // 메인 페이지로 리다이렉트 (서브경로 배포 대응: 등록 scope 기준 상대 경로 사용)
-  const scopeUrl = new URL(self.registration.scope);
   return Response.redirect(`${scopeUrl.pathname}?shared=true`, 303);
 }
