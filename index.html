@@ -701,10 +701,18 @@
     const params = new URLSearchParams(location.search);
     if (!params.has('shared')) return;
     history.replaceState({}, '', location.pathname);
+    const notice = document.getElementById('shareNotice');
+    // 공유 실패 시 원인을 화면에 표시 (진단용)
+    const showShareError = msg => {
+      notice.textContent = `⚠️ 공유 파일을 받지 못했어요: ${msg}`;
+      notice.classList.add('show');
+      setTimeout(() => notice.classList.remove('show'), 10000);
+    };
+    if (params.get('share_err')) return showShareError(params.get('share_err'));
     try {
       const cache = await caches.open('share-target-v1');
       const keys = (await cache.keys()).filter(req => new URL(req.url).pathname.includes('/shared-files/'));
-      if (!keys.length) return;
+      if (!keys.length) return showShareError(`캐시에 파일 없음 (SW 전달 ${params.get('shared')}개)`);
       const files = [];
       for (const req of keys) {
         const res = await cache.match(req);
@@ -714,11 +722,14 @@
         const name = decodeURIComponent(res.headers.get('X-File-Name') || 'shared-file');
         files.push(new File([blob], name, { type: blob.type }));
       }
-      if (!files.length) return;
+      if (!files.length) return showShareError('캐시 항목을 읽지 못함');
       addFiles(files.map(f => ({ file: f, relPath: f.name })));
-      document.getElementById('shareNotice').classList.add('show');
-      setTimeout(() => document.getElementById('shareNotice').classList.remove('show'), 4000);
-    } catch (e) { console.error('공유 파일 복원 실패:', e); }
+      notice.classList.add('show');
+      setTimeout(() => notice.classList.remove('show'), 4000);
+    } catch (e) {
+      console.error('공유 파일 복원 실패:', e);
+      showShareError(e.message || String(e));
+    }
   }
 
   // ── 탭 전환
