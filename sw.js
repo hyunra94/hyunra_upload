@@ -22,7 +22,7 @@ async function handleShareTarget(request) {
     const formData = await request.formData();
     const files = formData.getAll('file').filter(f => f instanceof File);
     count = files.length;
-    if (!count) err = `받은 파일 없음 (필드: ${[...formData.keys()].join(',') || '없음'})`;
+    if (!count) err = `받은 파일 없음 (필드: ${[...formData.keys()].join(",") || "없음"}, 형식: ${(request.headers.get("content-type") || "없음").split(";")[0]})`;
 
     const cache = await caches.open(CACHE_NAME);
     // 이전 공유 잔여물 정리

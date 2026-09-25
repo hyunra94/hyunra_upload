@@ -1,4 +1,5 @@
 {
+  "id": "./",
   "name": "파일 업로드",
   "short_name": "파일업로드",
   "description": "비밀키로 보호되는 개인 파일 업로드 서비스",
@@ -25,14 +26,20 @@
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
       "files": [
         {
           "name": "file",
           "accept": [
             "image/*",
             "video/*",
+            "audio/*",
+            "text/*",
             "application/*",
-            "*/*"
+            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif",
+            ".mp4", ".mov", ".pdf", ".zip"
           ]
         }
       ]
